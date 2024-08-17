@@ -1,25 +1,27 @@
-#include "mongoose.h"
+#include "handler.hpp"
+#include "server.hpp"
 
-// Connection event handler function
-static void fn(struct mg_connection *c, int ev, void *ev_data) {
-    if(ev == MG_EV_HTTP_MSG) { // New HTTP request received
-        struct mg_http_message *hm =
-            (struct mg_http_message *)ev_data; // Parsed HTTP request
-        if(mg_match(hm->uri, mg_str("/api/hello"), NULL)) { // REST API call?
-            mg_http_reply(c, 200, "", "{%m:%d}\n", MG_ESC("status"),
-                          1); // Yes. Respond JSON
-        } else {
-            mg_http_reply(c, 404, "", "%s", "Not Found\n");
-        }
+#include <memory>
+
+class HomeHandler : public SimpleHandler {
+    bool matches(const HttpMessage &msg) const override {
+        return msg.get_uri() == "/";
     }
-}
+
+    HttpResponse respond(const HttpMessage &msg) override {
+        HttpResponse response{};
+        response.body = "<html><body>Hello!</body></html>";
+        return response;
+    }
+};
 
 int main(void) {
-    struct mg_mgr mgr; // Mongoose event manager. Holds all connections
-    mg_mgr_init(&mgr); // Initialise event manager
-    mg_http_listen(&mgr, "http://0.0.0.0:8000", fn, NULL); // Setup listener
-    for(;;) {
-        mg_mgr_poll(&mgr, 1000); // Infinite event loop
-    }
+    Server server("http://0.0.0.0:8080");
+    server.register_handler(std::make_unique<HomeHandler>());
+    server.register_handler(std::make_unique<DirHandler>("/static/", "static"));
+    server.register_handler(
+        std::make_unique<FileHandler>("/favicon.ico", "res/andromeda.ico"));
+    server.start();
+
     return 0;
 }

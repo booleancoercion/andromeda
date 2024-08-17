@@ -10,7 +10,7 @@ set(CMAKE_CXX_EXTENSIONS false)
 
 add_library(mongoose STATIC lib/mongoose/mongoose.c)
 
-add_executable(andromeda src/main.cpp)
+add_executable(andromeda src/main.cpp src/server.cpp src/handler.cpp)
 target_compile_options(andromeda PRIVATE -Wall -Wextra -Wpedantic)
 
 target_link_libraries(andromeda mongoose)
