@@ -10,17 +10,20 @@
 
 #include <memory>
 
+#define REGISTER_HANDLER(Type, ...)                                            \
+    server.register_handler(std::make_unique<Type>(__VA_ARGS__))
+
 int main(void) {
     static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender{};
     plog::init(plog::Severity::verbose, &consoleAppender);
 
     Database db("andromeda.db");
     Server server(db, {"http://0.0.0.0:8080", "http://[::]:8080"});
-    server.register_handler(std::make_unique<IndexHandler>());
-    server.register_handler(std::make_unique<AboutHandler>());
-    server.register_handler(std::make_unique<DirHandler>("/static/", "static"));
-    server.register_handler(
-        std::make_unique<FileHandler>("/favicon.ico", "res/andromeda.ico"));
+    REGISTER_HANDLER(IndexHandler);
+    REGISTER_HANDLER(AboutHandler);
+    REGISTER_HANDLER(DirHandler, "/static/", "static");
+    REGISTER_HANDLER(FileHandler, "/favicon.ico", "res/andromeda.ico");
+
     server.start();
 
     return 0;

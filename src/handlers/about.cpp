@@ -4,6 +4,8 @@
 #include <inja/inja.hpp>
 #include <nlohmann/json.hpp>
 
+using nlohmann::json;
+
 AboutHandler::AboutHandler() : m_temp{m_env.parse_template("about.html")} {
 }
 
@@ -12,7 +14,7 @@ bool AboutHandler::matches(const HttpMessage &msg) const {
 }
 
 HttpResponse AboutHandler::respond(Server &, const HttpMessage &) {
-    nlohmann::json data{};
+    json data{};
     data["title"] = "About";
 
     HttpResponse response{};

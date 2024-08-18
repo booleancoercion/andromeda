@@ -6,10 +6,12 @@
 #include <format>
 #include <sstream>
 
+using std::string, std::stringstream;
+
 // HttpResponse
 
-std::string HttpResponse::header_string() const {
-    std::stringstream stream{};
+string HttpResponse::header_string() const {
+    stringstream stream{};
     for(const auto &[key, val] : headers) {
         stream << key << ": " << val << "\r\n";
     }
@@ -35,7 +37,7 @@ bool DirHandler::matches(const HttpMessage &msg) const {
     return uri.starts_with(m_path_prefix);
 }
 
-DirHandler::DirHandler(const std::string &path_prefix, const std::string &root)
+DirHandler::DirHandler(const string &path_prefix, const string &root)
     : m_path_prefix{path_prefix},
       m_root_dir_arg{std::format("{}={}", path_prefix, root)} {
 }
@@ -48,7 +50,7 @@ void DirHandler::handle(mg_connection *conn, Server &, const HttpMessage &msg) {
 
 // FileHandler
 
-FileHandler::FileHandler(const std::string &uri, const std::string &path)
+FileHandler::FileHandler(const string &uri, const string &path)
     : m_uri{uri}, m_path{path} {
 }
 

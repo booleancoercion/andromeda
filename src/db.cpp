@@ -3,7 +3,9 @@
 #include <plog/Log.h>
 #include <sqlite/sqlite3.h>
 
-Database::Database(const std::string &connection_string) {
+using std::vector, std::string, std::pair;
+
+Database::Database(const string &connection_string) {
     PLOG_INFO << "connecting to database with connection string "
               << connection_string;
 
@@ -24,7 +26,7 @@ Database::~Database() {
 
 void Database::init_database() const {
     // clang-format off
-    const std::string stmts{
+    const string stmts{
 R"(
 CREATE TABLE IF NOT EXISTS visitors(
     id          INTEGER     NOT NULL PRIMARY KEY,

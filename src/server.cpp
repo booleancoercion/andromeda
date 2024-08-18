@@ -9,37 +9,39 @@
 #include <limits>
 #include <string>
 
-static std::string mg_addr_to_string(mg_addr addr) {
+using std::string, std::vector, std::unique_ptr;
+
+static string mg_addr_to_string(mg_addr addr) {
     char buf[50]{}; // longer than any possible IP+port combination
     mg_snprintf(buf, sizeof(buf), "%M", mg_print_ip_port, &addr);
-    return std::string(buf);
+    return string(buf);
 }
 
 // HttpMessage
 
-static std::string mg_str_to_string(mg_str str) {
-    return std::string(str.ptr, str.len);
+static string mg_str_to_string(mg_str str) {
+    return string(str.ptr, str.len);
 }
 
-std::string HttpMessage::get_uri() const {
+string HttpMessage::get_uri() const {
     return mg_str_to_string(m_msg->uri);
 }
 
-std::string HttpMessage::get_method() const {
+string HttpMessage::get_method() const {
     return mg_str_to_string(m_msg->method);
 }
 
-std::string HttpMessage::get_body() const {
+string HttpMessage::get_body() const {
     return get_body(std::numeric_limits<size_t>::max());
 }
 
-std::string HttpMessage::get_body(size_t limit) const {
-    return std::string(m_msg->body.ptr, std::min(m_msg->body.len, limit));
+string HttpMessage::get_body(size_t limit) const {
+    return string(m_msg->body.ptr, std::min(m_msg->body.len, limit));
 }
 
 // Server
 
-Server::Server(Database &db, const std::vector<std::string> &listen_urls)
+Server::Server(Database &db, const vector<string> &listen_urls)
     : m_db{db}, m_listen_urls{listen_urls} {
     PLOG_INFO << "initializing server";
     mg_mgr_init(&m_manager);
@@ -90,8 +92,8 @@ static int read_status_code(mg_connection *conn) {
         return -1;
     }
 
-    std::string substr((const char *)&conn->send.buf[first_space + 1],
-                       second_space - first_space - 1);
+    string substr((const char *)&conn->send.buf[first_space + 1],
+                  second_space - first_space - 1);
     return std::stoi(substr);
 }
 
@@ -101,7 +103,7 @@ void Server::event_listener(mg_connection *conn, int event, void *data) {
         handle_http(conn, msg);
 
         int status_code = read_status_code(conn);
-        std::string body{msg.get_body(40)};
+        string body{msg.get_body(40)};
         std::replace(body.begin(), body.end(), '\n', ' ');
 
         // clang-format off
@@ -125,7 +127,7 @@ void Server::handle_http(mg_connection *conn, const HttpMessage &msg) {
     mg_http_reply(conn, 404, "", "%s", "not found");
 }
 
-void Server::register_handler(std::unique_ptr<BaseHandler> handler) {
+void Server::register_handler(unique_ptr<BaseHandler> handler) {
     m_handlers.push_back(std::move(handler));
 }
 
