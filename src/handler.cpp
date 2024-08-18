@@ -32,8 +32,7 @@ void SimpleHandler::handle(mg_connection *conn, Server &server,
 
 // DirHandler
 DirHandler::DirHandler(const string &path_prefix, const string &root)
-    : m_path_prefix{path_prefix},
-      m_root_dir_arg{std::format("{}={}", path_prefix, root)} {
+    : m_path_prefix{path_prefix}, m_root_dir_arg{path_prefix + '=' + root} {
 }
 
 bool DirHandler::matches(const HttpMessage &msg) const {
