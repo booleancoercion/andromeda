@@ -11,9 +11,10 @@ bool IndexHandler::matches(const HttpMessage &msg) const {
     return msg.get_uri() == "/";
 }
 
-HttpResponse IndexHandler::respond(const HttpMessage &) {
+HttpResponse IndexHandler::respond(Server &server, const HttpMessage &) {
     nlohmann::json data{};
     data["title"] = "Home";
+    data["visitors"] = server.get_db().get_and_increase_visitors();
 
     HttpResponse response{};
     response.body = m_env.render(m_temp, data);

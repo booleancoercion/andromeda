@@ -14,14 +14,15 @@ Database::Database(std::string connection_string) {
     }
     PLOG_INFO << "connected to database";
 
-    create_tables();
+    init_database();
 }
 
 Database::~Database() {
     sqlite3_close(m_connection);
+    PLOG_INFO << "database connection closed";
 }
 
-void Database::create_tables() {
+void Database::init_database() {
     // clang-format off
     const std::string stmts{
 R"(
@@ -29,6 +30,8 @@ CREATE TABLE IF NOT EXISTS visitors(
     id          INTEGER     NOT NULL PRIMARY KEY,
     visitors    INTEGER     NOT NULL
 );
+
+INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
 )"};
     // clang-format on
 
@@ -38,4 +41,28 @@ CREATE TABLE IF NOT EXISTS visitors(
         PLOG_FATAL << "error when creating tables:" << err;
         exit(1);
     }
+}
+
+int64_t Database::get_and_increase_visitors() {
+    sqlite3_stmt *stmt;
+    int rc;
+
+    rc = sqlite3_prepare_v2(
+        m_connection,
+        "UPDATE visitors SET visitors = visitors + 1 RETURNING visitors;", -1,
+        &stmt, nullptr);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    if(SQLITE_ROW == sqlite3_step(stmt)) {
+        int64_t result = sqlite3_column_int64(stmt, 0);
+        sqlite3_finalize(stmt);
+        return result;
+    }
+
+err:
+    sqlite3_finalize(stmt);
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return -1;
 }

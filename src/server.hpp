@@ -27,7 +27,7 @@ class HttpMessage {
 };
 class Server {
   private:
-    Database m_db;
+    Database &m_db;
     mg_mgr m_manager;
     std::vector<std::string> m_listen_urls;
     std::vector<std::unique_ptr<class BaseHandler>> m_handlers{};
@@ -39,10 +39,12 @@ class Server {
   public:
     Server() = delete;
     Server(const Server &) = delete;
-    Server(Database db, std::vector<std::string> listen_urls);
+    Server(Server &&) = delete;
+    Server(Database &db, std::vector<std::string> listen_urls);
 
     ~Server();
 
     void start();
     void register_handler(std::unique_ptr<BaseHandler> handler);
+    Database &get_db();
 };

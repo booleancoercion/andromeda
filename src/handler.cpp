@@ -19,8 +19,9 @@ std::string HttpResponse::header_string() const {
 
 // SimpleHandler
 
-void SimpleHandler::handle(mg_connection *conn, const HttpMessage &msg) {
-    auto response{respond(msg)};
+void SimpleHandler::handle(mg_connection *conn, Server &server,
+                           const HttpMessage &msg) {
+    auto response{respond(server, msg)};
     auto headers{response.header_string()};
     mg_http_reply(conn, response.status_code,
                   headers.size() > 0 ? headers.c_str() : NULL, "%s",
@@ -39,7 +40,7 @@ DirHandler::DirHandler(std::string path_prefix, std::string root)
       m_root_dir_arg{std::format("{}={}", path_prefix, root)} {
 }
 
-void DirHandler::handle(mg_connection *conn, const HttpMessage &msg) {
+void DirHandler::handle(mg_connection *conn, Server &, const HttpMessage &msg) {
     mg_http_serve_opts opts{};
     opts.root_dir = m_root_dir_arg.c_str();
     mg_http_serve_dir(conn, msg.m_msg, &opts);
@@ -55,7 +56,8 @@ bool FileHandler::matches(const HttpMessage &msg) const {
     return msg.get_uri() == m_uri;
 }
 
-void FileHandler::handle(mg_connection *conn, const HttpMessage &msg) {
+void FileHandler::handle(mg_connection *conn, Server &,
+                         const HttpMessage &msg) {
     mg_http_serve_opts opts{};
     mg_http_serve_file(conn, msg.m_msg, m_path.c_str(), &opts);
 }

@@ -12,5 +12,5 @@ class IndexHandler : public SimpleHandler {
   public:
     IndexHandler();
     bool matches(const HttpMessage &msg) const override;
-    HttpResponse respond(const HttpMessage &msg) override;
+    HttpResponse respond(Server &server, const HttpMessage &msg) override;
 };

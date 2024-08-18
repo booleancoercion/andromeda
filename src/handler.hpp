@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 class HttpMessage;
+class Server;
 
 struct HttpResponse {
     int status_code{200};
@@ -18,14 +19,16 @@ struct HttpResponse {
 class BaseHandler {
   public:
     virtual bool matches(const HttpMessage &msg) const = 0;
-    virtual void handle(mg_connection *conn, const HttpMessage &msg) = 0;
+    virtual void handle(mg_connection *conn, Server &server,
+                        const HttpMessage &msg) = 0;
     virtual ~BaseHandler() = default;
 };
 
 class SimpleHandler : public BaseHandler {
   public:
-    void handle(mg_connection *conn, const HttpMessage &msg) override final;
-    virtual HttpResponse respond(const HttpMessage &msg) = 0;
+    void handle(mg_connection *conn, Server &server,
+                const HttpMessage &msg) override final;
+    virtual HttpResponse respond(Server &server, const HttpMessage &msg) = 0;
 };
 
 class DirHandler : public BaseHandler {
@@ -37,7 +40,8 @@ class DirHandler : public BaseHandler {
     DirHandler(std::string path_prefix, std::string root);
 
     bool matches(const HttpMessage &msg) const override;
-    void handle(mg_connection *conn, const HttpMessage &msg) override;
+    void handle(mg_connection *conn, Server &server,
+                const HttpMessage &msg) override;
 };
 
 class FileHandler : public BaseHandler {
@@ -49,5 +53,6 @@ class FileHandler : public BaseHandler {
     FileHandler(std::string uri, std::string path);
 
     bool matches(const HttpMessage &msg) const override;
-    void handle(mg_connection *conn, const HttpMessage &msg) override;
+    void handle(mg_connection *conn, Server &server,
+                const HttpMessage &msg) override;
 };
