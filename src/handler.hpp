@@ -37,7 +37,7 @@ class DirHandler : public BaseHandler {
     std::string m_root_dir_arg{};
 
   public:
-    DirHandler(std::string path_prefix, std::string root);
+    DirHandler(const std::string &path_prefix, const std::string &root);
 
     bool matches(const HttpMessage &msg) const override;
     void handle(mg_connection *conn, Server &server,
@@ -50,7 +50,7 @@ class FileHandler : public BaseHandler {
     std::string m_path;
 
   public:
-    FileHandler(std::string uri, std::string path);
+    FileHandler(const std::string &uri, const std::string &path);
 
     bool matches(const HttpMessage &msg) const override;
     void handle(mg_connection *conn, Server &server,

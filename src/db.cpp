@@ -3,7 +3,7 @@
 #include <plog/Log.h>
 #include <sqlite/sqlite3.h>
 
-Database::Database(std::string connection_string) {
+Database::Database(const std::string &connection_string) {
     PLOG_INFO << "connecting to database with connection string "
               << connection_string;
 
@@ -22,7 +22,7 @@ Database::~Database() {
     PLOG_INFO << "database connection closed";
 }
 
-void Database::init_database() {
+void Database::init_database() const {
     // clang-format off
     const std::string stmts{
 R"(
@@ -43,7 +43,7 @@ INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
     }
 }
 
-int64_t Database::get_and_increase_visitors() {
+int64_t Database::get_and_increase_visitors() const {
     sqlite3_stmt *stmt;
     int rc;
 

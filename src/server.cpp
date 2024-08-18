@@ -39,7 +39,7 @@ std::string HttpMessage::get_body(size_t limit) const {
 
 // Server
 
-Server::Server(Database &db, std::vector<std::string> listen_urls)
+Server::Server(Database &db, const std::vector<std::string> &listen_urls)
     : m_db{db}, m_listen_urls{listen_urls} {
     PLOG_INFO << "initializing server";
     mg_mgr_init(&m_manager);
@@ -114,7 +114,7 @@ void Server::event_listener(mg_connection *conn, int event, void *data) {
     }
 }
 
-void Server::handle_http(mg_connection *conn, HttpMessage &msg) {
+void Server::handle_http(mg_connection *conn, const HttpMessage &msg) {
     for(auto &handler : m_handlers) {
         if(handler->matches(msg)) {
             handler->handle(conn, *this, msg);

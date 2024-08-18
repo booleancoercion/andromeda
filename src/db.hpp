@@ -8,14 +8,14 @@ class Database {
   private:
     sqlite3 *m_connection{nullptr};
 
-    void init_database();
+    void init_database() const;
 
   public:
     Database() = delete;
     Database(const Database &) = delete;
     Database(Database &&) = delete;
-    Database(std::string connection_string);
+    Database(const std::string &connection_string);
     ~Database();
 
-    int64_t get_and_increase_visitors();
+    int64_t get_and_increase_visitors() const;
 };

@@ -34,13 +34,13 @@ class Server {
 
     static void event_listener_glue(mg_connection *conn, int event, void *data);
     void event_listener(mg_connection *conn, int event, void *data);
-    void handle_http(mg_connection *conn, HttpMessage &msg);
+    void handle_http(mg_connection *conn, const HttpMessage &msg);
 
   public:
     Server() = delete;
     Server(const Server &) = delete;
     Server(Server &&) = delete;
-    Server(Database &db, std::vector<std::string> listen_urls);
+    Server(Database &db, const std::vector<std::string> &listen_urls);
 
     ~Server();
 

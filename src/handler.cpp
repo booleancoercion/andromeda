@@ -35,7 +35,7 @@ bool DirHandler::matches(const HttpMessage &msg) const {
     return uri.starts_with(m_path_prefix);
 }
 
-DirHandler::DirHandler(std::string path_prefix, std::string root)
+DirHandler::DirHandler(const std::string &path_prefix, const std::string &root)
     : m_path_prefix{path_prefix},
       m_root_dir_arg{std::format("{}={}", path_prefix, root)} {
 }
@@ -48,7 +48,7 @@ void DirHandler::handle(mg_connection *conn, Server &, const HttpMessage &msg) {
 
 // FileHandler
 
-FileHandler::FileHandler(std::string uri, std::string path)
+FileHandler::FileHandler(const std::string &uri, const std::string &path)
     : m_uri{uri}, m_path{path} {
 }
 
