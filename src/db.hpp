@@ -8,6 +8,8 @@ class Database {
   private:
     sqlite3 *m_connection{nullptr};
 
+    void create_tables();
+
   public:
     Database() = delete;
     Database(const Database &) = delete;
