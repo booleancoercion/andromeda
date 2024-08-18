@@ -2,21 +2,44 @@
 #include "db.hpp"
 #include "handler.hpp"
 
+#include <algorithm>
 #include <mongoose/mongoose.h>
+#include <plog/Log.h>
 
+#include <limits>
 #include <string>
+
+static std::string mg_addr_to_string(mg_addr addr) {
+    return "address";
+}
 
 // HttpMessage
 
+static std::string mg_str_to_string(mg_str str) {
+    return std::string(str.ptr, str.len);
+}
+
 std::string HttpMessage::get_uri() const {
-    return std::string(m_msg->uri.ptr, m_msg->uri.len);
+    return mg_str_to_string(m_msg->uri);
+}
+
+std::string HttpMessage::get_method() const {
+    return mg_str_to_string(m_msg->method);
+}
+
+std::string HttpMessage::get_body() const {
+    return get_body(std::numeric_limits<size_t>::max());
+}
+
+std::string HttpMessage::get_body(size_t limit) const {
+    return std::string(m_msg->body.ptr, std::min(m_msg->body.len, limit));
 }
 
 // Server
 
 Server::Server(Database db, std::string listen_url)
     : m_db{std::move(db)}, m_listen_url{listen_url} {
-    mg_log_set(MG_LL_DEBUG);
+    PLOG_INFO << "initializing server";
     mg_mgr_init(&m_manager);
 }
 
@@ -25,6 +48,7 @@ Server::~Server() {
 }
 
 void Server::start() {
+    PLOG_INFO << "starting server. listening on " << m_listen_url;
     mg_http_listen(&m_manager, m_listen_url.c_str(),
                    Server::event_listener_glue, this);
 
@@ -38,10 +62,48 @@ void Server::event_listener_glue(mg_connection *conn, int event, void *data) {
     server->event_listener(conn, event, data);
 }
 
+// reads the status code of the message that's about to be sent.
+// this is a *little* cursed but unfortunately mongoose doesn't provide an API
+// for this, and i can't pass it myself because i also need to get the status
+// code of e.g. served directories
+static int read_status_code(mg_connection *conn) {
+    constexpr size_t MAX = std::numeric_limits<size_t>::max();
+    size_t first_space{MAX}, second_space{MAX};
+    for(size_t i{0}; i < conn->send.len; i++) {
+        if(conn->send.buf[i] != ' ')
+            continue;
+        if(first_space == MAX) {
+            first_space = i;
+        } else {
+            second_space = i;
+            break;
+        }
+    }
+    if(first_space == MAX || second_space == MAX) {
+        return -1;
+    }
+
+    std::string substr((const char *)&conn->send.buf[first_space + 1],
+                       second_space - first_space - 1);
+    return std::stoi(substr);
+}
+
 void Server::event_listener(mg_connection *conn, int event, void *data) {
     if(event == MG_EV_HTTP_MSG) {
         HttpMessage msg((mg_http_message *)data);
         handle_http(conn, msg);
+
+        int status_code = read_status_code(conn);
+        std::string body{msg.get_body(40)};
+        std::replace(body.begin(), body.end(), '\n', ' ');
+
+        // clang-format off
+        PLOG_INFO << mg_addr_to_string(conn->rem) << " "
+                  << msg.get_method() << " "
+                  << status_code << " "
+                  << msg.get_uri() << " "
+                  << body;
+        // clang-format on
     }
 }
 

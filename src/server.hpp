@@ -21,8 +21,10 @@ class HttpMessage {
 
   public:
     std::string get_uri() const;
+    std::string get_method() const;
+    std::string get_body() const;
+    std::string get_body(size_t limit) const;
 };
-
 class Server {
   private:
     Database m_db;

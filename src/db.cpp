@@ -1,15 +1,18 @@
 #include "db.hpp"
 
+#include <plog/Log.h>
 #include <sqlite/sqlite3.h>
 
-#include <iostream>
-
 Database::Database(std::string connection_string) {
+    PLOG_INFO << "connecting to database with connection string "
+              << connection_string;
+
     if(sqlite3_open(connection_string.c_str(), &m_connection) != SQLITE_OK) {
-        std::cerr << "error when opening sqlite database: "
-                  << sqlite3_errmsg(m_connection) << std::endl;
+        PLOG_FATAL << "error when opening sqlite database: "
+                   << sqlite3_errmsg(m_connection);
         exit(1);
     }
+    PLOG_INFO << "connected to database";
 
     create_tables();
 }
@@ -32,7 +35,7 @@ CREATE TABLE IF NOT EXISTS visitors(
     char *err{nullptr};
     sqlite3_exec(m_connection, stmts.c_str(), nullptr, nullptr, &err);
     if(err != nullptr) {
-        std::cerr << "error when creating tables:" << err << std::endl;
+        PLOG_FATAL << "error when creating tables:" << err;
         exit(1);
     }
 }
