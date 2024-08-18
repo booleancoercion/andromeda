@@ -14,7 +14,7 @@ target_compile_definitions(mongoose PRIVATE MG_IO_SIZE=32768 MG_ENABLE_IPV6=1 MG
 add_library(sqlite STATIC lib/sqlite/sqlite3.c)
 target_compile_options(sqlite PRIVATE -Wno-language-extension-token)
 
-add_executable(andromeda src/main.cpp src/server.cpp src/handler.cpp src/db.cpp src/handlers/index.cpp)
+add_executable(andromeda src/main.cpp src/server.cpp src/handler.cpp src/db.cpp src/handlers/index.cpp src/handlers/about.cpp)
 target_compile_options(andromeda PRIVATE -Wall -Wextra -Wpedantic -Wno-language-extension-token)
 target_include_directories(andromeda PRIVATE lib)
 if(WIN32)

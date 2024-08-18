@@ -1,4 +1,5 @@
 #include "handler.hpp"
+#include "handlers/about.hpp"
 #include "handlers/index.hpp"
 #include "server.hpp"
 
@@ -16,6 +17,7 @@ int main(void) {
     Database db("andromeda.db");
     Server server(db, {"http://0.0.0.0:8080", "http://[::]:8080"});
     server.register_handler(std::make_unique<IndexHandler>());
+    server.register_handler(std::make_unique<AboutHandler>());
     server.register_handler(std::make_unique<DirHandler>("/static/", "static"));
     server.register_handler(
         std::make_unique<FileHandler>("/favicon.ico", "res/andromeda.ico"));
