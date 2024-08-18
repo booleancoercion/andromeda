@@ -29,7 +29,7 @@ class Server {
   private:
     Database m_db;
     mg_mgr m_manager;
-    std::string m_listen_url;
+    std::vector<std::string> m_listen_urls;
     std::vector<std::unique_ptr<class BaseHandler>> m_handlers{};
 
     static void event_listener_glue(mg_connection *conn, int event, void *data);
@@ -39,7 +39,7 @@ class Server {
   public:
     Server() = delete;
     Server(const Server &) = delete;
-    Server(Database db, std::string listen_url);
+    Server(Database db, std::vector<std::string> listen_urls);
 
     ~Server();
 

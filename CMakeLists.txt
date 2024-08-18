@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 20)
 # set(CMAKE_CXX_EXTENSIONS false)
 
 add_library(mongoose STATIC lib/mongoose/mongoose.c)
-target_compile_definitions(mongoose PRIVATE MG_IO_SIZE=32768)
+target_compile_definitions(mongoose PRIVATE MG_IO_SIZE=32768 MG_ENABLE_IPV6=1 MG_ENABLE_DIRLIST=0)
 
 add_library(sqlite STATIC lib/sqlite/sqlite3.c)
 target_compile_options(sqlite PRIVATE -Wno-language-extension-token)

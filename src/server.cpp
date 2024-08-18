@@ -10,7 +10,9 @@
 #include <string>
 
 static std::string mg_addr_to_string(mg_addr addr) {
-    return "address";
+    char buf[50]{}; // longer than any possible IP+port combination
+    mg_snprintf(buf, sizeof(buf), "%M", mg_print_ip_port, &addr);
+    return std::string(buf);
 }
 
 // HttpMessage
@@ -37,8 +39,8 @@ std::string HttpMessage::get_body(size_t limit) const {
 
 // Server
 
-Server::Server(Database db, std::string listen_url)
-    : m_db{std::move(db)}, m_listen_url{listen_url} {
+Server::Server(Database db, std::vector<std::string> listen_urls)
+    : m_db{std::move(db)}, m_listen_urls{listen_urls} {
     PLOG_INFO << "initializing server";
     mg_mgr_init(&m_manager);
 }
@@ -48,9 +50,13 @@ Server::~Server() {
 }
 
 void Server::start() {
-    PLOG_INFO << "starting server. listening on " << m_listen_url;
-    mg_http_listen(&m_manager, m_listen_url.c_str(),
-                   Server::event_listener_glue, this);
+    PLOG_INFO << "starting server.";
+
+    for(const auto &url : m_listen_urls) {
+        PLOG_INFO << "listening on " << url;
+        mg_http_listen(&m_manager, url.c_str(), Server::event_listener_glue,
+                       this);
+    }
 
     while(true) {
         mg_mgr_poll(&m_manager, 1000);
