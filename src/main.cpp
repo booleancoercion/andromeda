@@ -1,5 +1,6 @@
 #include "handler.hpp"
 #include "handlers/about.hpp"
+#include "handlers/game.hpp"
 #include "handlers/index.hpp"
 #include "server.hpp"
 
@@ -20,6 +21,7 @@ int main(void) {
     Database db("andromeda.db");
     Server server(db, {"http://0.0.0.0:8080", "http://[::]:8080"});
     REGISTER_HANDLER(IndexHandler);
+    REGISTER_HANDLER(GameHandler);
     REGISTER_HANDLER(AboutHandler);
     REGISTER_HANDLER(DirHandler, "/static/", "static");
     REGISTER_HANDLER(FileHandler, "/favicon.ico", "res/andromeda.ico");
