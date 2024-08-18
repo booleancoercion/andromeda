@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS visitors(
     id          INTEGER     NOT NULL PRIMARY KEY,
     visitors    INTEGER     NOT NULL
 );
+CREATE TABLE IF NOT EXISTS messages(
+    id          INTEGER     NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name        TEXT        NOT NULL,
+    content     TEXT        NOT NULL,
+    ip          TEXT        NOT NULL
+);
 
 INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
 )"};
@@ -67,4 +73,89 @@ err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return -1;
+}
+
+vector<pair<string, string>> Database::get_messages() const {
+    sqlite3_stmt *stmt;
+    int rc;
+    vector<pair<string, string>> output{};
+
+    rc = sqlite3_prepare_v2(
+        m_connection,
+        "SELECT (id, name, content) FROM messages ORDER BY id ASC;", -1, &stmt,
+        nullptr);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    while(true) {
+        rc = sqlite3_step(stmt);
+        if(SQLITE_ROW == rc) {
+            string name((const char *)sqlite3_column_text(stmt, 1));
+            string content((const char *)sqlite3_column_text(stmt, 2));
+            output.push_back({name, content});
+        } else if(SQLITE_DONE == rc) {
+            sqlite3_finalize(stmt);
+            return output;
+        } else {
+            break;
+        }
+    }
+
+err:
+    sqlite3_finalize(stmt);
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {};
+}
+
+void Database::insert_message(const string &name, const string &content,
+                              const string &ip) const {
+    sqlite3_stmt *stmt;
+    int rc;
+
+    rc = sqlite3_prepare_v2(
+        m_connection,
+        "INSERT INTO messages(name, content, ip) VALUES (?, ?, ?);", -1, &stmt,
+        nullptr);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    rc = sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_STATIC);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    rc = sqlite3_bind_text(stmt, 2, content.c_str(), -1, SQLITE_STATIC);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    rc = sqlite3_bind_text(stmt, 3, ip.c_str(), -1, SQLITE_STATIC);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    if(SQLITE_DONE != sqlite3_step(stmt)) {
+        goto err;
+    }
+
+    sqlite3_reset(stmt);
+    rc = sqlite3_prepare_v2(
+        m_connection,
+        "DELETE FROM messages WHERE id <= (SELECT MAX(id) FROM messages) - 8;",
+        -1, &stmt, nullptr);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    if(SQLITE_DONE == sqlite3_step(stmt)) {
+        sqlite3_finalize(stmt);
+        return;
+    }
+
+err:
+    sqlite3_finalize(stmt);
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return;
 }

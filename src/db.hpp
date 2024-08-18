@@ -3,6 +3,7 @@
 #include <sqlite/sqlite3.h>
 
 #include <string>
+#include <vector>
 
 class Database {
   private:
@@ -18,4 +19,7 @@ class Database {
     ~Database();
 
     int64_t get_and_increase_visitors() const;
+    std::vector<std::pair<std::string, std::string>> get_messages() const;
+    void insert_message(const std::string &name, const std::string &content,
+                        const std::string &ip) const;
 };
