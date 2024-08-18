@@ -1,8 +1,8 @@
 #include "index.hpp"
 #include "../server.hpp"
 
-#include "inja/inja.hpp"
-#include "nlohmann/json.hpp"
+#include <inja/inja.hpp>
+#include <nlohmann/json.hpp>
 
 IndexHandler::IndexHandler() : m_temp{m_env.parse_template("index.html")} {
 }

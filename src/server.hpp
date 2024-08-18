@@ -2,7 +2,7 @@
 
 #include "db.hpp"
 
-#include "mongoose/mongoose.h"
+#include <mongoose/mongoose.h>
 
 #include <memory>
 #include <string>

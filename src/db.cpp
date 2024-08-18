@@ -1,8 +1,7 @@
 #include "db.hpp"
 
-#include "sqlite/sqlite3.h"
+#include <sqlite/sqlite3.h>
 
-#include <cstdlib>
 #include <iostream>
 
 Database::Database(std::string connection_string) {

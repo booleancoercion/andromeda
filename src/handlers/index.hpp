@@ -2,7 +2,7 @@
 
 #include "../handler.hpp"
 
-#include "inja/inja.hpp"
+#include <inja/inja.hpp>
 
 class IndexHandler : public SimpleHandler {
   private:

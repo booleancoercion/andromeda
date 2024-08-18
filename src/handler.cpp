@@ -1,7 +1,7 @@
 #include "handler.hpp"
 #include "server.hpp"
 
-#include "mongoose/mongoose.h"
+#include <mongoose/mongoose.h>
 
 #include <format>
 #include <sstream>
