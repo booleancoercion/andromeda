@@ -5,7 +5,7 @@
 #include <memory>
 
 int main(void) {
-    Server server("http://0.0.0.0:8080");
+    Server server(Database("andromeda.db"), "http://0.0.0.0:8080");
     server.register_handler(std::make_unique<IndexHandler>());
     server.register_handler(std::make_unique<DirHandler>("/static/", "static"));
     server.register_handler(

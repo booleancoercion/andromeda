@@ -1,5 +1,7 @@
 #pragma once
 
+#include "db.hpp"
+
 #include "mongoose/mongoose.h"
 
 #include <memory>
@@ -23,6 +25,7 @@ class HttpMessage {
 
 class Server {
   private:
+    Database m_db;
     mg_mgr m_manager;
     std::string m_listen_url;
     std::vector<std::unique_ptr<class BaseHandler>> m_handlers{};
@@ -34,7 +37,7 @@ class Server {
   public:
     Server() = delete;
     Server(const Server &) = delete;
-    Server(std::string listen_url);
+    Server(Database db, std::string listen_url);
 
     ~Server();
 

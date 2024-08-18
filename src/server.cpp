@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include "db.hpp"
 #include "handler.hpp"
 
 #include "mongoose/mongoose.h"
@@ -13,7 +14,8 @@ std::string HttpMessage::get_uri() const {
 
 // Server
 
-Server::Server(std::string listen_url) : m_listen_url{listen_url} {
+Server::Server(Database db, std::string listen_url)
+    : m_db{std::move(db)}, m_listen_url{listen_url} {
     mg_log_set(MG_LL_DEBUG);
     mg_mgr_init(&m_manager);
 }

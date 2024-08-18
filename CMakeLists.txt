@@ -6,16 +6,19 @@ project(andromeda VERSION 1.0
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_EXTENSIONS false)
+# set(CMAKE_CXX_EXTENSIONS false)
 
 add_library(mongoose STATIC lib/mongoose/mongoose.c)
 target_compile_definitions(mongoose PRIVATE MG_IO_SIZE=32768)
 
-add_executable(andromeda src/main.cpp src/server.cpp src/handler.cpp src/handlers/index.cpp)
-target_compile_options(andromeda PRIVATE -Wall -Wextra -Wpedantic)
+add_library(sqlite STATIC lib/sqlite/sqlite3.c)
+target_compile_options(sqlite PRIVATE -Wno-language-extension-token)
+
+add_executable(andromeda src/main.cpp src/server.cpp src/handler.cpp src/db.cpp src/handlers/index.cpp)
+target_compile_options(andromeda PRIVATE -Wall -Wextra -Wpedantic -Wno-language-extension-token)
 target_include_directories(andromeda PRIVATE lib)
 if(WIN32)
     target_compile_definitions(andromeda PRIVATE NOMINMAX)
 endif()
 
-target_link_libraries(andromeda mongoose)
+target_link_libraries(andromeda mongoose sqlite)
