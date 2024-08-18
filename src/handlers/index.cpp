@@ -8,7 +8,7 @@ IndexHandler::IndexHandler() : m_temp{m_env.parse_template("index.html")} {
 }
 
 bool IndexHandler::matches(const HttpMessage &msg) const {
-    return msg.get_uri() == "/";
+    return msg.get_method() == "GET" && msg.get_uri() == "/";
 }
 
 HttpResponse IndexHandler::respond(Server &server, const HttpMessage &) {

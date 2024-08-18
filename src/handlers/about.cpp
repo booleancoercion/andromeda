@@ -10,7 +10,7 @@ AboutHandler::AboutHandler() : m_temp{m_env.parse_template("about.html")} {
 }
 
 bool AboutHandler::matches(const HttpMessage &msg) const {
-    return msg.get_uri() == "/about";
+    return msg.get_method() == "GET" && msg.get_uri() == "/about";
 }
 
 HttpResponse AboutHandler::respond(Server &, const HttpMessage &) {

@@ -31,15 +31,14 @@ void SimpleHandler::handle(mg_connection *conn, Server &server,
 }
 
 // DirHandler
-
-bool DirHandler::matches(const HttpMessage &msg) const {
-    auto uri{msg.get_uri()};
-    return uri.starts_with(m_path_prefix);
-}
-
 DirHandler::DirHandler(const string &path_prefix, const string &root)
     : m_path_prefix{path_prefix},
       m_root_dir_arg{std::format("{}={}", path_prefix, root)} {
+}
+
+bool DirHandler::matches(const HttpMessage &msg) const {
+    return msg.get_method() == "GET" &&
+           msg.get_uri().starts_with(m_path_prefix);
 }
 
 void DirHandler::handle(mg_connection *conn, Server &, const HttpMessage &msg) {
@@ -55,7 +54,7 @@ FileHandler::FileHandler(const string &uri, const string &path)
 }
 
 bool FileHandler::matches(const HttpMessage &msg) const {
-    return msg.get_uri() == m_uri;
+    return msg.get_method() == "GET" && msg.get_uri() == m_uri;
 }
 
 void FileHandler::handle(mg_connection *conn, Server &,
