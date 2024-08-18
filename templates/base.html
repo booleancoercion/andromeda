@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>{{ title }} - boolco.dev!</title>
+        <link rel="stylesheet" href="/static/css/simple.min.css" />
+        
+        <link rel="apple-touch-icon" sizes="180x180" href="/static/browser_stuff/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/static/browser_stuff/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/static/browser_stuff/favicon-16x16.png">
+        <link rel="manifest" href="/static/browser_stuff/site.webmanifest">
+    </head>
+    <body>
+        <header>
+            <nav>
+                <a {% if title == "Home" %} class="current" {% endif %} href="/">Home</a>
+                
+                <a {% if title == "Message Board" %} class="current" {% endif %} href="/game">Message Board</a>
+
+                <a {% if title == "Discord Name" %} class="current" {% endif %} href="/discord_name">Discord Name</a>
+
+                <a {% if title == "Open Graph Test" %} class="current" {% endif %} href="/og">Open Graph Test</a>
+
+                <a {% if title == "Link Shortener" %} class="current" {% endif %} href="/short">Link Shortener</a>
+
+                <a {% if title == "About" %} class="current" {% endif %} href="/about">About</a>
+            </nav>
+            <h1>{% block longtitle %}{% endblock %}</h1>
+        </header>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+        <footer>
+            Written by boolean_coercion. Source: <a href="https://github.com/booleancoercion/andromeda">GitHub</a>.
+        </footer>
+    </body>
+</html>

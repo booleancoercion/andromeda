@@ -9,9 +9,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS false)
 
 add_library(mongoose STATIC lib/mongoose/mongoose.c)
+target_compile_definitions(mongoose PRIVATE MG_IO_SIZE=32768)
 
-add_executable(andromeda src/main.cpp src/server.cpp src/handler.cpp)
+add_executable(andromeda src/main.cpp src/server.cpp src/handler.cpp src/handlers/index.cpp)
 target_compile_options(andromeda PRIVATE -Wall -Wextra -Wpedantic)
 target_include_directories(andromeda PRIVATE lib)
+if(WIN32)
+    target_compile_definitions(andromeda PRIVATE NOMINMAX)
+endif()
 
 target_link_libraries(andromeda mongoose)
