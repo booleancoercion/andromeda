@@ -1,9 +1,14 @@
 {% extends "base.html" %}
+{% block head %}<script src="/static/js/game.js"></script>{% endblock %}
 {% block longtitle %}Message Board{% endblock %}
 {% block content %}
+<noscript>
+    <p style="color: red;">Please enable JavaScript in order to use this page.</p>
+</noscript>
+<div id="messages" style="overflow: hidden; transition: height 0.5s ease-in-out; height: 0px;"></div>
 <article>
-    <h3>Post a message of your own!</h3>
-    <form action="/game" method="post">
+    <h3>Post a message!</h3>
+    <form action="javascript:void(0);">
         <p>
             <label for="name">Your name:</label>
             <input type="text" id="name" name="name" required minlength="1" maxlength="40">
@@ -12,7 +17,8 @@
             <label for="content">Your message:</label>
             <textarea id="content" name="content" style="resize: none;" required minlength="1" maxlength="1000" rows="6"></textarea>
         </p>
-        <button type="submit">Submit</button>
+        <button id="button" type="submit">Submit</button>
     </form>
+    <div id="response"></div>
 </article>
 {% endblock %}

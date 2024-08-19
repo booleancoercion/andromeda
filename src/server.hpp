@@ -11,9 +11,11 @@
 class HttpMessage {
   private:
     mg_http_message *m_msg;
+    mg_addr m_peer_addr;
 
     HttpMessage() = delete;
-    inline HttpMessage(mg_http_message *msg) : m_msg{msg} {};
+    inline HttpMessage(mg_http_message *msg, mg_addr peer_addr)
+        : m_msg{msg}, m_peer_addr{peer_addr} {};
 
     friend class Server;
     friend class DirHandler;
@@ -24,6 +26,7 @@ class HttpMessage {
     std::string get_method() const;
     std::string get_body() const;
     std::string get_body(size_t limit) const;
+    mg_addr get_peer_addr() const;
 };
 class Server {
   private:

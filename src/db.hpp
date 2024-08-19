@@ -14,6 +14,13 @@ enum class DbError {
 
 template <typename T> using DbResult = Result<T, DbError>;
 
+struct Message {
+    std::string name;
+    std::string content;
+    std::string ip;
+    int64_t timestamp;
+};
+
 class Database {
   private:
     sqlite3 *m_connection{nullptr};
@@ -28,9 +35,6 @@ class Database {
     ~Database();
 
     DbResult<int64_t> get_and_increase_visitors() const;
-    DbResult<std::vector<std::pair<std::string, std::string>>> get_messages()
-        const;
-    DbResult<std::monostate> insert_message(const std::string &name,
-                                            const std::string &content,
-                                            const std::string &ip) const;
+    DbResult<std::vector<Message>> get_messages() const;
+    DbResult<std::monostate> insert_message(const Message &message) const;
 };

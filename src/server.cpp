@@ -39,6 +39,10 @@ string HttpMessage::get_body(size_t limit) const {
     return string(m_msg->body.ptr, std::min(m_msg->body.len, limit));
 }
 
+mg_addr HttpMessage::get_peer_addr() const {
+    return m_peer_addr;
+}
+
 // Server
 
 Server::Server(Database &db, const vector<string> &listen_urls)
@@ -97,9 +101,16 @@ static int read_status_code(mg_connection *conn) {
     return std::stoi(substr);
 }
 
+static int numconns(mg_mgr *mgr) {
+    int n = 0;
+    for(mg_connection *t = mgr->conns; t != NULL; t = t->next)
+        n++;
+    return n;
+}
+
 void Server::event_listener(mg_connection *conn, int event, void *data) {
     if(event == MG_EV_HTTP_MSG) {
-        HttpMessage msg((mg_http_message *)data);
+        HttpMessage msg((mg_http_message *)data, conn->rem);
         handle_http(conn, msg);
 
         int status_code = read_status_code(conn);
@@ -107,12 +118,24 @@ void Server::event_listener(mg_connection *conn, int event, void *data) {
         std::replace(body.begin(), body.end(), '\n', ' ');
 
         // clang-format off
-        PLOG_INFO << mg_addr_to_string(conn->rem) << " "
+        PLOG_INFO << mg_addr_to_string(msg.get_peer_addr()) << " "
                   << msg.get_method() << " "
                   << status_code << " "
                   << msg.get_uri() << " "
                   << body;
         // clang-format on
+    } else if(event == MG_EV_READ) {
+        if(conn->recv.len > 2048) {
+            PLOG_WARNING << "message too large; dropping "
+                         << mg_addr_to_string(conn->rem);
+            conn->is_closing = 1;
+        }
+    } else if(event == MG_EV_ACCEPT) {
+        if(numconns(conn->mgr) > 50) {
+            PLOG_WARNING << "too many connections; dropping "
+                         << mg_addr_to_string(conn->rem);
+            conn->is_closing = 1;
+        }
     }
 }
 

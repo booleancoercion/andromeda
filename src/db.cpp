@@ -4,7 +4,7 @@
 #include <sqlite/sqlite3.h>
 #include <variant>
 
-using std::vector, std::string, std::pair;
+using std::vector, std::string;
 
 // Database
 
@@ -19,6 +19,7 @@ Database::Database(const string &connection_string) {
     }
     PLOG_INFO << "connected to database";
 
+    sqlite3_extended_result_codes(m_connection, 1);
     init_database();
 }
 
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS messages(
     id          INTEGER     NOT NULL PRIMARY KEY AUTOINCREMENT,
     name        TEXT        NOT NULL,
     content     TEXT        NOT NULL,
+    timestamp   INTEGER     NOT NULL,
     ip          TEXT        NOT NULL UNIQUE
 );
 
@@ -78,15 +80,15 @@ err:
     return DbResult<int64_t>::err(DbError::Unknown);
 }
 
-DbResult<vector<pair<string, string>>> Database::get_messages() const {
+DbResult<vector<Message>> Database::get_messages() const {
     sqlite3_stmt *stmt;
     int rc;
-    vector<pair<string, string>> output{};
+    vector<Message> output{};
 
     rc = sqlite3_prepare_v2(
         m_connection,
-        "SELECT id, name, content FROM messages ORDER BY id DESC;", -1, &stmt,
-        nullptr);
+        "SELECT id, name, content, timestamp FROM messages ORDER BY id DESC;",
+        -1, &stmt, nullptr);
     if(SQLITE_OK != rc) {
         goto err;
     }
@@ -96,10 +98,16 @@ DbResult<vector<pair<string, string>>> Database::get_messages() const {
         if(SQLITE_ROW == rc) {
             string name((const char *)sqlite3_column_text(stmt, 1));
             string content((const char *)sqlite3_column_text(stmt, 2));
-            output.push_back({name, content});
+            int64_t timestamp = sqlite3_column_int64(stmt, 3);
+            // we don't fetch the actual ip since it's not useful outside of the
+            // database
+            output.push_back(Message{.name = name,
+                                     .content = content,
+                                     .timestamp = timestamp,
+                                     .ip = string()});
         } else if(SQLITE_DONE == rc) {
             sqlite3_finalize(stmt);
-            return DbResult<vector<pair<string, string>>>::ok(output);
+            return DbResult<vector<Message>>::ok(output);
         } else {
             break;
         }
@@ -108,39 +116,47 @@ DbResult<vector<pair<string, string>>> Database::get_messages() const {
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
-    return DbResult<vector<pair<string, string>>>::err(DbError::Unknown);
+    return DbResult<vector<Message>>::err(DbError::Unknown);
 }
 
-DbResult<std::monostate> Database::insert_message(const string &name,
-                                                  const string &content,
-                                                  const string &ip) const {
+DbResult<std::monostate> Database::insert_message(
+    const Message &message) const {
     sqlite3_stmt *stmt;
     int rc;
 
-    rc = sqlite3_prepare_v2(
-        m_connection,
-        "INSERT INTO messages(name, content, ip) VALUES (?, ?, ?);", -1, &stmt,
-        nullptr);
+    rc = sqlite3_prepare_v2(m_connection,
+                            "INSERT INTO messages(name, content, timestamp, "
+                            "ip) VALUES (?, ?, ?, ?);",
+                            -1, &stmt, nullptr);
     if(SQLITE_OK != rc) {
         goto err;
     }
 
-    rc = sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_STATIC);
+    rc = sqlite3_bind_text(stmt, 1, message.name.c_str(), -1, SQLITE_STATIC);
     if(SQLITE_OK != rc) {
         goto err;
     }
 
-    rc = sqlite3_bind_text(stmt, 2, content.c_str(), -1, SQLITE_STATIC);
+    rc = sqlite3_bind_text(stmt, 2, message.content.c_str(), -1, SQLITE_STATIC);
     if(SQLITE_OK != rc) {
         goto err;
     }
 
-    rc = sqlite3_bind_text(stmt, 3, ip.c_str(), -1, SQLITE_STATIC);
+    rc = sqlite3_bind_int64(stmt, 3, message.timestamp);
     if(SQLITE_OK != rc) {
         goto err;
     }
 
-    if(SQLITE_DONE != sqlite3_step(stmt)) {
+    rc = sqlite3_bind_text(stmt, 4, message.ip.c_str(), -1, SQLITE_STATIC);
+    if(SQLITE_OK != rc) {
+        goto err;
+    }
+
+    rc = sqlite3_step(stmt);
+    if(SQLITE_CONSTRAINT_UNIQUE == rc) {
+        sqlite3_finalize(stmt);
+        return DbResult<std::monostate>::err(DbError::Unique);
+    } else if(SQLITE_DONE != rc) {
         goto err;
     }
 

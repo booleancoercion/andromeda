@@ -22,6 +22,8 @@ int main(void) {
     Server server(db, {"http://0.0.0.0:8080", "http://[::]:8080"});
     REGISTER_HANDLER(IndexHandler);
     REGISTER_HANDLER(GameHandler);
+    REGISTER_HANDLER(GameApiGet);
+    REGISTER_HANDLER(GameApiPost);
     REGISTER_HANDLER(AboutHandler);
     REGISTER_HANDLER(DirHandler, "/static/", "static");
     REGISTER_HANDLER(FileHandler, "/favicon.ico", "res/andromeda.ico");
