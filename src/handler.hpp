@@ -8,12 +8,32 @@
 class HttpMessage;
 class Server;
 
+enum class ContentType {
+    TextPlain,
+    TextHtml,
+    ApplicationJson,
+};
+
+static const char *content_type_to_string(ContentType ct) {
+    switch(ct) {
+    case ContentType::TextPlain:
+        return "text/plain";
+    case ContentType::TextHtml:
+        return "text/html";
+    case ContentType::ApplicationJson:
+        return "application/json";
+    }
+}
+
 struct HttpResponse {
     int status_code{200};
     std::unordered_map<std::string, std::string> headers{};
     std::string body{};
 
     std::string header_string() const;
+    void set_content_type(ContentType ct) {
+        headers["Content-Type"] = content_type_to_string(ct);
+    }
 };
 
 class BaseHandler {

@@ -124,7 +124,8 @@ void Server::handle_http(mg_connection *conn, const HttpMessage &msg) {
         }
     }
 
-    mg_http_reply(conn, 404, "", "%s", "not found");
+    mg_http_reply(conn, 404, "Content-Type: text/plain;\r\n", "%s",
+                  "not found");
 }
 
 void Server::register_handler(unique_ptr<BaseHandler> handler) {

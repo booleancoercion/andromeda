@@ -17,5 +17,6 @@ HttpResponse GameHandler::respond(Server &, const HttpMessage &) {
 
     HttpResponse response{};
     response.body = m_env.render(m_temp, data);
+    response.set_content_type(ContentType::TextHtml);
     return response;
 }
