@@ -2,8 +2,11 @@
 
 #include <plog/Log.h>
 #include <sqlite/sqlite3.h>
+#include <variant>
 
 using std::vector, std::string, std::pair;
+
+// Database
 
 Database::Database(const string &connection_string) {
     PLOG_INFO << "connecting to database with connection string "
@@ -36,7 +39,7 @@ CREATE TABLE IF NOT EXISTS messages(
     id          INTEGER     NOT NULL PRIMARY KEY AUTOINCREMENT,
     name        TEXT        NOT NULL,
     content     TEXT        NOT NULL,
-    ip          TEXT        NOT NULL
+    ip          TEXT        NOT NULL UNIQUE
 );
 
 INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
@@ -51,7 +54,7 @@ INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
     }
 }
 
-int64_t Database::get_and_increase_visitors() const {
+DbResult<int64_t> Database::get_and_increase_visitors() const {
     sqlite3_stmt *stmt;
     int rc;
 
@@ -66,23 +69,23 @@ int64_t Database::get_and_increase_visitors() const {
     if(SQLITE_ROW == sqlite3_step(stmt)) {
         int64_t result = sqlite3_column_int64(stmt, 0);
         sqlite3_finalize(stmt);
-        return result;
+        return DbResult<int64_t>::ok(result);
     }
 
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
-    return -1;
+    return DbResult<int64_t>::err(DbError::Unknown);
 }
 
-vector<pair<string, string>> Database::get_messages() const {
+DbResult<vector<pair<string, string>>> Database::get_messages() const {
     sqlite3_stmt *stmt;
     int rc;
     vector<pair<string, string>> output{};
 
     rc = sqlite3_prepare_v2(
         m_connection,
-        "SELECT (id, name, content) FROM messages ORDER BY id ASC;", -1, &stmt,
+        "SELECT id, name, content FROM messages ORDER BY id DESC;", -1, &stmt,
         nullptr);
     if(SQLITE_OK != rc) {
         goto err;
@@ -96,7 +99,7 @@ vector<pair<string, string>> Database::get_messages() const {
             output.push_back({name, content});
         } else if(SQLITE_DONE == rc) {
             sqlite3_finalize(stmt);
-            return output;
+            return DbResult<vector<pair<string, string>>>::ok(output);
         } else {
             break;
         }
@@ -105,11 +108,12 @@ vector<pair<string, string>> Database::get_messages() const {
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
-    return {};
+    return DbResult<vector<pair<string, string>>>::err(DbError::Unknown);
 }
 
-void Database::insert_message(const string &name, const string &content,
-                              const string &ip) const {
+DbResult<std::monostate> Database::insert_message(const string &name,
+                                                  const string &content,
+                                                  const string &ip) const {
     sqlite3_stmt *stmt;
     int rc;
 
@@ -151,11 +155,11 @@ void Database::insert_message(const string &name, const string &content,
 
     if(SQLITE_DONE == sqlite3_step(stmt)) {
         sqlite3_finalize(stmt);
-        return;
+        return DbResult<std::monostate>::ok(std::monostate{});
     }
 
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
-    return;
+    return DbResult<std::monostate>::err(DbError::Unknown);
 }
