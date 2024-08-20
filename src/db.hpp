@@ -17,8 +17,8 @@ template <typename T> using DbResult = Result<T, DbError>;
 struct Message {
     std::string name;
     std::string content;
-    std::string ip;
     int64_t timestamp;
+    std::string ip;
 };
 
 class Database {
