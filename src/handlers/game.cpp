@@ -61,7 +61,7 @@ bool GameApiPost::matches(const HttpMessage &msg) const {
     return msg.get_method() == "POST" && msg.get_uri() == "/api/game";
 }
 
-bool is_not_space(char ch) {
+bool is_not_space(unsigned char ch) {
     return !std::isspace(ch);
 }
 
