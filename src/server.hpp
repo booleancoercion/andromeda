@@ -34,6 +34,8 @@ class Server {
     mg_mgr m_manager;
     std::vector<std::string> m_listen_urls;
     std::vector<std::unique_ptr<class BaseHandler>> m_handlers{};
+    std::string m_key;
+    std::string m_cert;
 
     static void event_listener_glue(mg_connection *conn, int event, void *data);
     void event_listener(mg_connection *conn, int event, void *data);
@@ -43,7 +45,8 @@ class Server {
     Server() = delete;
     Server(const Server &) = delete;
     Server(Server &&) = delete;
-    Server(Database &db, const std::vector<std::string> &listen_urls);
+    Server(Database &db, const std::vector<std::string> &listen_urls,
+           const std::string &key, const std::string &cert);
 
     ~Server();
 

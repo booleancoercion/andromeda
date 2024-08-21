@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <mongoose/mongoose.h>
 #include <plog/Log.h>
+#include <psa/crypto.h>
 
 #include <limits>
 #include <string>
@@ -45,9 +46,13 @@ mg_addr HttpMessage::get_peer_addr() const {
 
 // Server
 
-Server::Server(Database &db, const vector<string> &listen_urls)
-    : m_db{db}, m_listen_urls{listen_urls} {
+Server::Server(Database &db, const vector<string> &listen_urls,
+               const string &key, const string &cert)
+    : m_db{db}, m_listen_urls{listen_urls}, m_key{key}, m_cert{cert} {
     PLOG_INFO << "initializing server";
+
+    mg_log_set(MG_LL_NONE);
+    psa_crypto_init(); // necessary for mbedtls to function
     mg_mgr_init(&m_manager);
 }
 
@@ -136,6 +141,11 @@ void Server::event_listener(mg_connection *conn, int event, void *data) {
                          << mg_addr_to_string(conn->rem);
             conn->is_closing = 1;
         }
+
+        mg_tls_opts opts{};
+        opts.key = mg_str_n(m_key.c_str(), m_key.size());
+        opts.cert = mg_str_n(m_cert.c_str(), m_cert.size());
+        mg_tls_init(conn, &opts);
     }
 }
 
