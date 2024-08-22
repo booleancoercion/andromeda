@@ -52,7 +52,15 @@ Server::Server(Database &db, const vector<string> &listen_urls,
     PLOG_INFO << "initializing server";
 
     mg_log_set(MG_LL_NONE);
-    psa_crypto_init(); // necessary for mbedtls to function
+
+    // necessary for mbedtls to function
+    auto ret = psa_crypto_init();
+    if(PSA_SUCCESS != ret) {
+        PLOG_FATAL << "Cannot initialize PSA crypto.";
+        PLOG_INFO << "Error value: " << ret;
+        exit(1);
+    }
+
     mg_mgr_init(&m_manager);
 }
 
