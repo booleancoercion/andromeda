@@ -21,7 +21,7 @@ static string mg_addr_to_string(mg_addr addr) {
 // HttpMessage
 
 static string mg_str_to_string(mg_str str) {
-    return string(str.ptr, str.len);
+    return string(str.buf, str.len);
 }
 
 string HttpMessage::get_uri() const {
@@ -37,7 +37,7 @@ string HttpMessage::get_body() const {
 }
 
 string HttpMessage::get_body(size_t limit) const {
-    return string(m_msg->body.ptr, std::min(m_msg->body.len, limit));
+    return string(m_msg->body.buf, std::min(m_msg->body.len, limit));
 }
 
 mg_addr HttpMessage::get_peer_addr() const {
