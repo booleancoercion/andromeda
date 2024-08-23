@@ -1,43 +1,51 @@
+#include "config.hpp"
 #include "handler.hpp"
 #include "handlers/about.hpp"
 #include "handlers/game.hpp"
 #include "handlers/index.hpp"
 #include "server.hpp"
+#include "util.hpp"
 
 #include <plog/Formatters/TxtFormatter.h>
 #include <plog/Initializers/ConsoleInitializer.h>
 #include <plog/Log.h>
 #include <plog/Severity.h>
 
-#include <fstream>
 #include <memory>
-#include <sstream>
 
 using std::ifstream, std::stringstream, std::string;
 
 #define REGISTER_HANDLER(Type, ...)                                            \
     server.register_handler(std::make_unique<Type>(__VA_ARGS__))
 
-string read_file(const string &filename) {
-    ifstream file(filename);
-    if(!file.is_open()) {
-        PLOG_FATAL << "could not open file " << filename << "!";
-        exit(1);
-    }
-    stringstream buffer{};
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
 int main(void) {
     static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender{};
     plog::init(plog::Severity::verbose, &consoleAppender);
 
-    string key = read_file("key.pem");
-    string cert = read_file("cert.pem");
+    auto config_r = Config::from_file("andromeda.json");
+    if(config_r.is_err()) {
+        PLOG_FATAL << "Error reading config file: "
+                   << config_error_str(config_r.get_err());
+        return 1;
+    }
+    const Config &config = config_r.get_ok();
 
-    Database db("andromeda.db");
-    Server server(db, {"https://0.0.0.0:8080", "https://[::]:8080"}, key, cert);
+    auto key_r = read_file(config.get_tls_key_filename());
+    if(key_r.is_err()) {
+        PLOG_FATAL << "failed to open key file";
+        return 1;
+    }
+    const string &key = key_r.get_ok();
+
+    auto cert_r = read_file(config.get_tls_cert_filename());
+    if(cert_r.is_err()) {
+        PLOG_FATAL << "failed to read certificate file";
+        return 1;
+    }
+    const string &cert = cert_r.get_ok();
+
+    Database db(config.get_db_connection());
+    Server server(db, config.get_listen_urls(), key, cert);
     REGISTER_HANDLER(IndexHandler);
     REGISTER_HANDLER(GameHandler);
     REGISTER_HANDLER(GameApiGet);

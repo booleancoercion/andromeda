@@ -72,10 +72,21 @@ Server::~Server() {
 void Server::start() {
     PLOG_INFO << "starting server.";
 
+    int urls_left = m_listen_urls.size();
     for(const auto &url : m_listen_urls) {
-        PLOG_INFO << "listening on " << url;
-        mg_http_listen(&m_manager, url.c_str(), Server::event_listener_glue,
-                       this);
+
+        auto ret = mg_http_listen(&m_manager, url.c_str(),
+                                  Server::event_listener_glue, this);
+        if(ret != nullptr) {
+            PLOG_INFO << "listening on " << url;
+        } else {
+            PLOG_ERROR << "could not listen on " << url;
+            urls_left -= 1;
+        }
+    }
+    if(urls_left == 0) {
+        PLOG_FATAL << "none of the urls were listenable; aborting";
+        exit(1);
     }
 
     while(true) {

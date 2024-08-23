@@ -32,6 +32,8 @@ add_executable(andromeda
     src/handler.cpp
     src/db.cpp
     src/crypto.cpp
+    src/util.cpp
+    src/config.cpp
     src/handlers/index.cpp
     src/handlers/game.cpp
     src/handlers/about.cpp

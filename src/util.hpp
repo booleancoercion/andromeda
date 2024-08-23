@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 
 template <typename T, typename E> class Result {
   private:
@@ -41,3 +42,5 @@ template <typename T, typename E> class Result {
         return m_err.value();
     }
 };
+
+Result<std::string, std::monostate> read_file(const std::string &filename);
