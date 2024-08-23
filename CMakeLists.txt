@@ -25,6 +25,7 @@ add_library(sqlite STATIC lib/sqlite/sqlite3.c)
 target_compile_options(sqlite PRIVATE -Wno-language-extension-token)
 
 add_subdirectory(lib/mbedtls)
+add_subdirectory(lib/base64)
 
 add_executable(andromeda
     src/main.cpp
