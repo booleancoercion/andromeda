@@ -172,6 +172,7 @@ target_compile_options(base64 PRIVATE
     -Wall
     -Wextra
     -Wpedantic
+    -Wno-unused-but-set-variable
   >
   $<$<BOOL:${BASE64_WERROR}>:$<IF:$<C_COMPILER_ID:MSVC>,/WX,-Werror>>
 )
