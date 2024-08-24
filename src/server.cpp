@@ -2,11 +2,11 @@
 #include "db.hpp"
 #include "handler.hpp"
 
-#include <algorithm>
 #include <mongoose/mongoose.h>
 #include <plog/Log.h>
 #include <psa/crypto.h>
 
+#include <algorithm>
 #include <limits>
 #include <string>
 
@@ -52,14 +52,6 @@ Server::Server(Database &db, const vector<string> &listen_urls,
     PLOG_INFO << "initializing server";
 
     mg_log_set(MG_LL_NONE);
-
-    // necessary for mbedtls to function
-    auto ret = psa_crypto_init();
-    if(PSA_SUCCESS != ret) {
-        PLOG_FATAL << "Cannot initialize PSA crypto.";
-        PLOG_INFO << "Error value: " << ret;
-        exit(1);
-    }
 
     mg_mgr_init(&m_manager);
 }

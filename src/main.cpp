@@ -10,6 +10,7 @@
 #include <plog/Initializers/ConsoleInitializer.h>
 #include <plog/Log.h>
 #include <plog/Severity.h>
+#include <psa/crypto.h>
 
 #include <memory>
 
@@ -19,6 +20,11 @@ using std::ifstream, std::stringstream, std::string;
     server.register_handler(std::make_unique<Type>(__VA_ARGS__))
 
 int main(void) {
+    if(PSA_SUCCESS != psa_crypto_init()) {
+        PLOG_FATAL << "Failed to initialize PSA crypto.";
+        return 1;
+    }
+
     static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender{};
     plog::init(plog::Severity::verbose, &consoleAppender);
 
