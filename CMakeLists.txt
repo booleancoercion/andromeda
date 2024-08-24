@@ -35,6 +35,7 @@ add_executable(andromeda
     src/crypto.cpp
     src/util.cpp
     src/config.cpp
+    src/auth.cpp
     src/handlers/index.cpp
     src/handlers/game.cpp
     src/handlers/about.cpp
@@ -57,4 +58,5 @@ target_link_libraries(andromeda PRIVATE
     MbedTLS::mbedtls
     MbedTLS::mbedcrypto
     MbedTLS::mbedx509
+    base64
 )

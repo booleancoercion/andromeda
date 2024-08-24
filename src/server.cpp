@@ -10,7 +10,7 @@
 #include <limits>
 #include <string>
 
-using std::string, std::vector, std::unique_ptr;
+using std::string, std::vector, std::unique_ptr, std::optional;
 
 static string mg_addr_to_string(mg_addr addr) {
     char buf[50]{}; // longer than any possible IP+port combination
@@ -22,6 +22,10 @@ static string mg_addr_to_string(mg_addr addr) {
 
 static string mg_str_to_string(mg_str str) {
     return string(str.buf, str.len);
+}
+
+void HttpMessage::set_username(std::string username) {
+    m_username = username;
 }
 
 string HttpMessage::get_uri() const {
@@ -40,15 +44,33 @@ string HttpMessage::get_body(size_t limit) const {
     return string(m_msg->body.buf, std::min(m_msg->body.len, limit));
 }
 
+optional<string> HttpMessage::get_id_cookie() const {
+    mg_str *cookie = mg_http_get_header(m_msg, "Cookie");
+    if(nullptr == cookie) {
+        return {};
+    }
+    mg_str id = mg_http_get_header_var(*cookie, mg_str_s("id"));
+    if(0 == id.len) {
+        return {};
+    } else {
+        return string(id.buf, id.len);
+    }
+}
+
 mg_addr HttpMessage::get_peer_addr() const {
     return m_peer_addr;
+}
+
+const optional<string> &HttpMessage::get_username() const {
+    return m_username;
 }
 
 // Server
 
 Server::Server(Database &db, const vector<string> &listen_urls,
                const string &key, const string &cert)
-    : m_db{db}, m_listen_urls{listen_urls}, m_key{key}, m_cert{cert} {
+    : m_db{db}, m_auth{Auth::with_db(db)}, m_listen_urls{listen_urls},
+      m_key{key}, m_cert{cert} {
     PLOG_INFO << "initializing server";
 
     mg_log_set(MG_LL_NONE);
@@ -127,6 +149,21 @@ static int numconns(mg_mgr *mgr) {
 void Server::event_listener(mg_connection *conn, int event, void *data) {
     if(event == MG_EV_HTTP_MSG) {
         HttpMessage msg((mg_http_message *)data, conn->rem);
+        auto id = msg.get_id_cookie();
+        do {
+            if(!id.has_value())
+                break;
+
+            auto token_r = Token::parse(*id);
+            if(token_r.is_err())
+                break;
+
+            auto user_r = m_auth.get_user_of_token(token_r.get_ok());
+            if(user_r.is_err())
+                break;
+
+            msg.set_username(user_r.get_ok());
+        } while(false);
         handle_http(conn, msg);
 
         int status_code = read_status_code(conn);
@@ -174,8 +211,4 @@ void Server::handle_http(mg_connection *conn, const HttpMessage &msg) {
 
 void Server::register_handler(unique_ptr<BaseHandler> handler) {
     m_handlers.push_back(std::move(handler));
-}
-
-Database &Server::get_db() {
-    return m_db;
 }
