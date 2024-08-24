@@ -150,8 +150,8 @@ PBKDF2_SHA512_HMAC::PBKDF2_SHA512_HMAC() {
         log_and_throw("psa_key_derivation_setup failed", ret);
     }
 
-    ret = psa_key_derivation_input_integer(&m_operation,
-                                           PSA_KEY_DERIVATION_INPUT_COST, 2);
+    ret = psa_key_derivation_input_integer(
+        &m_operation, PSA_KEY_DERIVATION_INPUT_COST, 210000);
     if(PSA_SUCCESS != ret) {
         log_and_throw("failed to set PBKDF2 cost", ret);
     }
