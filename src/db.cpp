@@ -384,7 +384,7 @@ DbResult<monostate> Database::store_token(const string &username,
         goto err;
     }
 
-    rc = sqlite3_bind_int64(stmt, 3, now_millis() + TOKEN_LIFE);
+    rc = sqlite3_bind_int64(stmt, 3, now_millis() + TOKEN_LIFE_MILLIS);
     if(SQLITE_OK != rc) {
         goto err;
     }

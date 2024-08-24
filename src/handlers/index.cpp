@@ -11,7 +11,7 @@ bool IndexHandler::matches(const HttpMessage &msg) const {
     return msg.get_method() == "GET" && msg.get_uri() == "/";
 }
 
-HttpResponse IndexHandler::respond(Server &server, const HttpMessage &) {
+HttpResponse IndexHandler::respond(Server &server, const HttpMessage &msg) {
     nlohmann::json data{};
     data["title"] = "Home";
     auto visitors{server.get_db().get_and_increase_visitors()};
@@ -19,6 +19,9 @@ HttpResponse IndexHandler::respond(Server &server, const HttpMessage &) {
         return HttpResponse{.status_code = 500};
     }
     data["visitors"] = visitors.get_ok();
+    if(msg.get_username().has_value()) {
+        data["user"] = msg.get_username().value();
+    }
 
     HttpResponse response{};
     response.body = m_env.render(m_temp, data);

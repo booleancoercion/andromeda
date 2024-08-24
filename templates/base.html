@@ -15,7 +15,13 @@
     <body>
         <header>
             <nav>
-                <span style="padding: .5rem .5rem; border-right: 1px solid var(--border);"><strong>Login OR Welcome, user. Logout</strong></span>
+                <span style="margin: 0 .25rem; padding: .5rem 0; border-right: 1px solid var(--border);">
+                {% if exists("user") %}
+                <strong>Welcome, {{ user }}.</strong> <a href="/logout" class="with-line"><strong>Logout</strong></a>
+                {% else %}
+                <a href="/login" class="with-line"><strong>Login</strong></a>
+                {% endif %}
+                </span>
 
                 <a {% if title == "Home" %} class="current" {% endif %} href="/">Home</a>
                 

@@ -33,6 +33,7 @@ class HttpMessage {
     std::optional<std::string> get_id_cookie() const;
     mg_addr get_peer_addr() const;
     const std::optional<std::string> &get_username() const;
+    std::optional<std::string> get_form_var(const std::string &key) const;
 };
 class Server {
   private:
@@ -46,7 +47,8 @@ class Server {
 
     static void event_listener_glue(mg_connection *conn, int event, void *data);
     void event_listener(mg_connection *conn, int event, void *data);
-    void handle_http(mg_connection *conn, const HttpMessage &msg);
+    void handle_http(mg_connection *conn, const HttpMessage &msg,
+                     bool &confidential);
 
   public:
     Server() = delete;

@@ -43,3 +43,9 @@ template <typename T, typename E> class Result {
 };
 
 Result<std::string, std::monostate> read_file(const std::string &filename);
+
+Result<std::string, std::monostate> percent_decode(const std::string &input,
+                                                   bool form);
+
+bool is_valid_username(const std::string &username);
+bool is_valid_password(const std::string &password);

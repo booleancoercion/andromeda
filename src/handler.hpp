@@ -39,16 +39,26 @@ struct HttpResponse {
 class BaseHandler {
   public:
     virtual bool matches(const HttpMessage &msg) const = 0;
-    virtual void handle(mg_connection *conn, Server &server,
-                        const HttpMessage &msg) = 0;
+    inline virtual void handle(mg_connection *, Server &, const HttpMessage &) {
+    }
+    inline virtual void handle(mg_connection *conn, Server &server,
+                               const HttpMessage &msg, bool &) {
+        handle(conn, server, msg);
+    }
     virtual ~BaseHandler() = default;
 };
 
 class SimpleHandler : public BaseHandler {
   public:
-    void handle(mg_connection *conn, Server &server,
-                const HttpMessage &msg) override final;
-    virtual HttpResponse respond(Server &server, const HttpMessage &msg) = 0;
+    void handle(mg_connection *conn, Server &server, const HttpMessage &msg,
+                bool &confidential) override final;
+    inline virtual HttpResponse respond(Server &, const HttpMessage &) {
+        return {};
+    };
+    inline virtual HttpResponse respond(Server &server, const HttpMessage &msg,
+                                        bool &) {
+        return respond(server, msg);
+    }
 };
 
 class DirHandler : public BaseHandler {

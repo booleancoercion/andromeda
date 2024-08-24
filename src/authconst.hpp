@@ -14,4 +14,5 @@ using mac_key_t = std::array<uint8_t, MAC_KEY_LENGTH>;
 using pw_hash_t = std::array<uint8_t, PW_HASH_LENGTH>;
 using pw_salt_t = std::array<uint8_t, PW_SALT_LENGTH>;
 
-constexpr int64_t TOKEN_LIFE = 1000 * 60 * 60 * 24 * 7; /* 7 days */
+constexpr int64_t TOKEN_LIFE_SECONDS = 60 * 60 * 24 * 7; /* 7 days */
+constexpr int64_t TOKEN_LIFE_MILLIS = 1000 * TOKEN_LIFE_SECONDS;

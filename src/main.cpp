@@ -3,6 +3,7 @@
 #include "handlers/about.hpp"
 #include "handlers/game.hpp"
 #include "handlers/index.hpp"
+#include "handlers/login.hpp"
 #include "server.hpp"
 #include "util.hpp"
 
@@ -52,6 +53,8 @@ int main(void) {
 
     Database db(config.get_db_connection());
     Server server(db, config.get_listen_urls(), key, cert);
+    REGISTER_HANDLER(LoginGetHandler);
+    REGISTER_HANDLER(LoginPostHandler);
     REGISTER_HANDLER(IndexHandler);
     REGISTER_HANDLER(GameHandler);
     REGISTER_HANDLER(GameApiGet);

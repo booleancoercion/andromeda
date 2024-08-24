@@ -1,6 +1,7 @@
 #include "server.hpp"
 #include "db.hpp"
 #include "handler.hpp"
+#include "util.hpp"
 
 #include <mongoose/mongoose.h>
 #include <plog/Log.h>
@@ -63,6 +64,20 @@ mg_addr HttpMessage::get_peer_addr() const {
 
 const optional<string> &HttpMessage::get_username() const {
     return m_username;
+}
+
+optional<string> HttpMessage::get_form_var(const string &key) const {
+    mg_str res = mg_http_var(m_msg->body, mg_str_n(key.data(), key.size()));
+    if(nullptr == res.buf) {
+        return {};
+    }
+
+    string value(res.buf, res.len);
+    auto decode = percent_decode(value, true);
+    if(decode.is_err()) {
+        return {};
+    }
+    return decode.get_ok();
 }
 
 // Server
@@ -164,11 +179,15 @@ void Server::event_listener(mg_connection *conn, int event, void *data) {
 
             msg.set_username(user_r.get_ok());
         } while(false);
-        handle_http(conn, msg);
+        bool confidential{false};
+        handle_http(conn, msg, confidential);
 
         int status_code = read_status_code(conn);
-        string body{msg.get_body(40)};
-        std::replace(body.begin(), body.end(), '\n', ' ');
+        string body{};
+        if(!confidential) {
+            body = msg.get_body(40);
+            std::replace(body.begin(), body.end(), '\n', ' ');
+        }
 
         // clang-format off
         PLOG_INFO << mg_addr_to_string(msg.get_peer_addr()) << " "
@@ -197,10 +216,11 @@ void Server::event_listener(mg_connection *conn, int event, void *data) {
     }
 }
 
-void Server::handle_http(mg_connection *conn, const HttpMessage &msg) {
+void Server::handle_http(mg_connection *conn, const HttpMessage &msg,
+                         bool &confidential) {
     for(auto &handler : m_handlers) {
         if(handler->matches(msg)) {
-            handler->handle(conn, *this, msg);
+            handler->handle(conn, *this, msg, confidential);
             return;
         }
     }

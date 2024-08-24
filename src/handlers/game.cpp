@@ -15,9 +15,12 @@ bool GameHandler::matches(const HttpMessage &msg) const {
     return msg.get_method() == "GET" && msg.get_uri() == "/game";
 }
 
-HttpResponse GameHandler::respond(Server &, const HttpMessage &) {
+HttpResponse GameHandler::respond(Server &, const HttpMessage &msg) {
     json data{};
     data["title"] = "Message Board";
+    if(msg.get_username().has_value()) {
+        data["user"] = msg.get_username().value();
+    }
 
     HttpResponse response{};
     response.body = m_env.render(m_temp, data);

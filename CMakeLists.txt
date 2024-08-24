@@ -39,6 +39,7 @@ add_executable(andromeda
     src/handlers/index.cpp
     src/handlers/game.cpp
     src/handlers/about.cpp
+    src/handlers/login.cpp
 )
 target_compile_options(andromeda PRIVATE
     -Wall

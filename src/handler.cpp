@@ -3,7 +3,6 @@
 
 #include <mongoose/mongoose.h>
 
-#include <format>
 #include <sstream>
 
 using std::string, std::stringstream;
@@ -22,8 +21,8 @@ string HttpResponse::header_string() const {
 // SimpleHandler
 
 void SimpleHandler::handle(mg_connection *conn, Server &server,
-                           const HttpMessage &msg) {
-    auto response{respond(server, msg)};
+                           const HttpMessage &msg, bool &confidential) {
+    auto response{respond(server, msg, confidential)};
     auto headers{response.header_string()};
     mg_http_reply(conn, response.status_code,
                   headers.size() > 0 ? headers.c_str() : NULL, "%s",

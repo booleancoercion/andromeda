@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block head %}
+{% endblock %}
+{% block longtitle %}Login{% endblock %}
+{% block content %}
+    <h3>Enter your credentials</h3>
+    <form action="/login" method="post">
+        <p>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required minlength="1" maxlength="40" pattern="[a-zA-Z0-9_]+">
+        </p>
+        <p>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required minlength="8" maxlength="128">
+        </p>
+        <button id="button" type="submit">Submit</button>
+    </form>
+    {% if exists("error") %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+{% endblock %}
