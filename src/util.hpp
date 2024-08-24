@@ -3,21 +3,20 @@
 #include <optional>
 #include <string>
 
+inline constexpr struct Ok {
+} Ok;
+inline constexpr struct Err {
+} Err;
+
 template <typename T, typename E> class Result {
   private:
-    std::optional<T> m_ok{};
-    std::optional<E> m_err{};
-
-    inline explicit Result(std::optional<T> ok, std::optional<E> err)
-        : m_ok{ok}, m_err{err} {
-    }
+    std::optional<T> m_ok;
+    std::optional<E> m_err;
 
   public:
-    inline static Result ok(T value) {
-        return Result(value, {});
+    inline Result(T value, struct Ok) : m_ok{value}, m_err{} {
     }
-    inline static Result err(E error) {
-        return Result({}, error);
+    inline Result(E error, struct Err) : m_ok{}, m_err{error} {
     }
     inline explicit Result(const Result &) = default;
     inline explicit Result(Result &&) = default;

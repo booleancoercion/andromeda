@@ -30,39 +30,39 @@ const vector<string> allowed_keys{"listen_urls", "tls_key", "tls_cert", "db"};
 Res Config::from_file(const std::string &filename) {
     auto content_r = read_file(filename);
     if(content_r.is_err()) {
-        return Res::err(ConfigError::BadFile);
+        return {ConfigError::BadFile, Err};
     }
     const string &content = content_r.get_ok();
 
     json data = json::parse(content, nullptr, false);
     if(data.is_discarded()) {
-        return Res::err(ConfigError::BadJson);
+        return {ConfigError::BadJson, Err};
     }
 
     if(!(data.contains("listen_urls") && data["listen_urls"].is_array())) {
-        return Res::err(ConfigError::BadUrls);
+        return {ConfigError::BadUrls, Err};
     }
 
     vector<string> urls{};
     for(const json &elem : data["listen_urls"]) {
         if(!elem.is_string()) {
-            return Res::err(ConfigError::BadUrls);
+            return {ConfigError::BadUrls, Err};
         }
         urls.push_back(elem);
     }
 
     if(!(data.contains("tls_key") && data["tls_key"].is_string())) {
-        return Res::err(ConfigError::BadKey);
+        return {ConfigError::BadKey, Err};
     }
     string key = data["tls_key"];
 
     if(!(data.contains("tls_cert") && data["tls_cert"].is_string())) {
-        return Res::err(ConfigError::BadCert);
+        return {ConfigError::BadCert, Err};
     }
     string cert = data["tls_cert"];
 
     if(!(data.contains("db") && data["db"].is_string())) {
-        return Res::err(ConfigError::BadDb);
+        return {ConfigError::BadDb, Err};
     }
     string db = data["db"];
 
@@ -74,5 +74,5 @@ Res Config::from_file(const std::string &filename) {
         }
     }
 
-    return Res::ok(Config(urls, key, cert, db));
+    return {Config(urls, key, cert, db), Ok};
 }

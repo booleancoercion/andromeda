@@ -4,7 +4,7 @@
 #include <sqlite/sqlite3.h>
 #include <variant>
 
-using std::vector, std::string;
+using std::vector, std::string, std::monostate;
 
 // Database
 
@@ -71,13 +71,13 @@ DbResult<int64_t> Database::get_and_increase_visitors() const {
     if(SQLITE_ROW == sqlite3_step(stmt)) {
         int64_t result = sqlite3_column_int64(stmt, 0);
         sqlite3_finalize(stmt);
-        return DbResult<int64_t>::ok(result);
+        return {result, Ok};
     }
 
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
-    return DbResult<int64_t>::err(DbError::Unknown);
+    return {DbError::Unknown, Err};
 }
 
 DbResult<vector<Message>> Database::get_messages() const {
@@ -107,7 +107,7 @@ DbResult<vector<Message>> Database::get_messages() const {
                                      .ip = string()});
         } else if(SQLITE_DONE == rc) {
             sqlite3_finalize(stmt);
-            return DbResult<vector<Message>>::ok(output);
+            return {output, Ok};
         } else {
             break;
         }
@@ -116,11 +116,10 @@ DbResult<vector<Message>> Database::get_messages() const {
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
-    return DbResult<vector<Message>>::err(DbError::Unknown);
+    return {DbError::Unknown, Err};
 }
 
-DbResult<std::monostate> Database::insert_message(
-    const Message &message) const {
+DbResult<monostate> Database::insert_message(const Message &message) const {
     sqlite3_stmt *stmt;
     int rc;
 
@@ -155,7 +154,7 @@ DbResult<std::monostate> Database::insert_message(
     rc = sqlite3_step(stmt);
     if(SQLITE_CONSTRAINT_UNIQUE == rc) {
         sqlite3_finalize(stmt);
-        return DbResult<std::monostate>::err(DbError::Unique);
+        return {DbError::Unique, Err};
     } else if(SQLITE_DONE != rc) {
         goto err;
     }
@@ -171,11 +170,11 @@ DbResult<std::monostate> Database::insert_message(
 
     if(SQLITE_DONE == sqlite3_step(stmt)) {
         sqlite3_finalize(stmt);
-        return DbResult<std::monostate>::ok(std::monostate{});
+        return {monostate{}, Ok};
     }
 
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
-    return DbResult<std::monostate>::err(DbError::Unknown);
+    return {DbError::Unknown, Err};
 }

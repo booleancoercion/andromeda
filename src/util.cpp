@@ -9,9 +9,9 @@ using std::string, std::ifstream, std::stringstream, std::monostate;
 Result<string, monostate> read_file(const string &filename) {
     ifstream file(filename);
     if(!file.is_open()) {
-        return Result<string, monostate>::err(monostate{});
+        return {monostate{}, Err};
     }
     stringstream buffer{};
     buffer << file.rdbuf();
-    return Result<string, monostate>::ok(buffer.str());
+    return {buffer.str(), Ok};
 }
