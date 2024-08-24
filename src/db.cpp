@@ -389,6 +389,12 @@ DbResult<monostate> Database::store_token(const string &username,
         goto err;
     }
 
+    rc = sqlite3_step(stmt);
+    if(SQLITE_DONE == rc) {
+        sqlite3_finalize(stmt);
+        return {monostate{}, Ok};
+    }
+
 err:
     sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);

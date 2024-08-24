@@ -2152,7 +2152,7 @@
  *          production, as long as you accept that you may need to make
  *          minor changes to psa/crypto_config.h when upgrading Mbed TLS.
  */
-//#define MBEDTLS_PSA_CRYPTO_CONFIG
+#define MBEDTLS_PSA_CRYPTO_CONFIG
 
 /**
  * \def MBEDTLS_VERSION_FEATURES

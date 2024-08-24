@@ -2,6 +2,7 @@
 
 #include <mongoose/mongoose.h>
 
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <variant>
@@ -43,6 +44,17 @@ bool is_valid_username(const std::string &username) {
     }
     return true;
 }
+
 bool is_valid_password(const std::string &password) {
     return password.size() >= 8 && password.size() <= 128;
+}
+
+constexpr uint8_t ipv4_localhost[16] = {127, 0, 0, 1, 0, 0, 0, 0,
+                                        0,   0, 0, 0, 0, 0, 0, 0};
+constexpr uint8_t ipv6_localhost[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                        0, 0, 0, 0, 0, 0, 0, 1};
+
+bool is_localhost(mg_addr addr) {
+    return (std::memcmp(ipv4_localhost, addr.ip, 16) == 0) ||
+           (std::memcmp(ipv6_localhost, addr.ip, 16) == 0);
 }

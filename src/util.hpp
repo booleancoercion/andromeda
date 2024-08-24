@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mongoose/mongoose.h"
+
 #include <optional>
 #include <string>
 
@@ -49,3 +51,4 @@ Result<std::string, std::monostate> percent_decode(const std::string &input,
 
 bool is_valid_username(const std::string &username);
 bool is_valid_password(const std::string &password);
+bool is_localhost(mg_addr addr);
