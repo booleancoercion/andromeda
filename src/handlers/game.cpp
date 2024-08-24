@@ -4,8 +4,6 @@
 #include <inja/inja.hpp>
 #include <nlohmann/json.hpp>
 
-#include <chrono>
-
 using nlohmann::json, std::string;
 
 // GameHandler
@@ -113,13 +111,11 @@ HttpResponse GameApiPost::respond(Server &server, const HttpMessage &msg) {
         return response;
     }
 
-    auto res = server.get_db().insert_message(Message{
-        .name = name,
-        .content = content,
-        .timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count(),
-        .ip = mg_ip_to_string(msg.get_peer_addr())});
+    auto res = server.get_db().insert_message(
+        Message{.name = name,
+                .content = content,
+                .timestamp = -1,
+                .ip = mg_ip_to_string(msg.get_peer_addr())});
 
     HttpResponse response{};
     if(res.is_err() && res.get_err() == DbError::Unique) {

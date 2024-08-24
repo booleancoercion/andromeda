@@ -2,9 +2,17 @@
 
 #include <plog/Log.h>
 #include <sqlite/sqlite3.h>
+
+#include <chrono>
 #include <variant>
 
 using std::vector, std::string, std::monostate;
+
+static int64_t now_millis() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}
 
 // Database
 
@@ -141,7 +149,7 @@ DbResult<monostate> Database::insert_message(const Message &message) const {
         goto err;
     }
 
-    rc = sqlite3_bind_int64(stmt, 3, message.timestamp);
+    rc = sqlite3_bind_int64(stmt, 3, now_millis());
     if(SQLITE_OK != rc) {
         goto err;
     }
