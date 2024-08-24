@@ -94,3 +94,16 @@ HttpResponse LoginPostHandler::respond(Server &server, const HttpMessage &msg,
 
     return response;
 }
+
+// LogoutHandler
+
+bool LogoutHandler::matches(const HttpMessage &msg) const {
+    return msg.get_uri() == "/logout";
+};
+HttpResponse LogoutHandler::respond(Server &, const HttpMessage &) {
+    HttpResponse response{.status_code = 302};
+    response.headers["Location"] = "/";
+    response.headers["Set-Cookie"] = "id=invalid; Max-Age=0";
+
+    return response;
+}
