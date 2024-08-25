@@ -1,5 +1,6 @@
 #include "game.hpp"
 #include "../server.hpp"
+#include "../util.hpp"
 
 #include <inja/inja.hpp>
 #include <nlohmann/json.hpp>
@@ -60,25 +61,6 @@ HttpResponse GameApiGet::respond(Server &server, const HttpMessage &) {
 
 bool GameApiPost::matches(const HttpMessage &msg) const {
     return msg.get_method() == "POST" && msg.get_uri() == "/api/game";
-}
-
-bool is_not_space(unsigned char ch) {
-    return !std::isspace(ch);
-}
-
-// trim from start (in place)
-static void ltrim(string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), is_not_space));
-}
-
-// trim from end (in place)
-static void rtrim(string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), is_not_space).base(), s.end());
-}
-
-static void trim(string &s) {
-    ltrim(s);
-    rtrim(s);
 }
 
 static string mg_ip_to_string(mg_addr addr) {

@@ -4,10 +4,12 @@
 
 #include <cstring>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <variant>
 
-using std::string, std::ifstream, std::stringstream, std::monostate;
+using std::string, std::ifstream, std::stringstream, std::monostate,
+    std::vector, std::optional;
 
 Result<string, monostate> read_file(const string &filename) {
     ifstream file(filename);
@@ -57,4 +59,67 @@ constexpr uint8_t ipv6_localhost[16] = {0, 0, 0, 0, 0, 0, 0, 0,
 bool is_localhost(mg_addr addr) {
     return (std::memcmp(ipv4_localhost, addr.ip, 16) == 0) ||
            (std::memcmp(ipv6_localhost, addr.ip, 16) == 0);
+}
+
+static bool is_not_space(unsigned char ch) {
+    return !std::isspace(ch);
+}
+
+void ltrim(string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), is_not_space));
+}
+
+void rtrim(string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), is_not_space).base(), s.end());
+}
+
+void trim(string &s) {
+    ltrim(s);
+    rtrim(s);
+}
+
+/// https://mongoose.ws/documentation/#mg_match
+/// Uses the same wildcards, except:
+/// If there's no match, nullopt is returned.
+/// If there is a match, a vector of all the captures is returned.
+template <>
+optional<vector<string>> match<true>(const string &input,
+                                     const string &pattern) {
+    size_t wildcards = 0;
+    for(char ch : pattern) {
+        if(ch == '?' || ch == '*' || ch == '#') {
+            wildcards += 1;
+        }
+    }
+
+    vector<mg_str> captures(wildcards + 1, mg_str{});
+    bool ret =
+        mg_match(mg_str_n(input.data(), input.size()),
+                 mg_str_n(pattern.data(), pattern.size()), captures.data());
+    if(!ret) {
+        return std::nullopt;
+    } else {
+        captures.pop_back();
+        vector<string> new_captures{};
+        for(mg_str str : captures) {
+            new_captures.push_back(string(str.buf, str.len));
+        }
+        return new_captures;
+    }
+}
+
+/// https://mongoose.ws/documentation/#mg_match
+/// Uses the same wildcards, except:
+/// If there's no match, nullopt is returned.
+/// If there is a match, an empty vector is returned.
+template <>
+optional<vector<string>> match<false>(const string &input,
+                                      const string &pattern) {
+    bool ret = mg_match(mg_str_n(input.data(), input.size()),
+                        mg_str_n(pattern.data(), pattern.size()), nullptr);
+    if(!ret) {
+        return std::nullopt;
+    } else {
+        return vector<string>{};
+    }
 }

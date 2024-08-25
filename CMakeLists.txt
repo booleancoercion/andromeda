@@ -41,6 +41,7 @@ add_executable(andromeda
     src/handlers/about.cpp
     src/handlers/login.cpp
     src/handlers/register.cpp
+    src/handlers/discord.cpp
     src/handlers/og.cpp
 )
 target_compile_options(andromeda PRIVATE

@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include "handler.hpp"
 #include "handlers/about.hpp"
+#include "handlers/discord.hpp"
 #include "handlers/game.hpp"
 #include "handlers/index.hpp"
 #include "handlers/login.hpp"
@@ -64,6 +65,8 @@ int main(void) {
     REGISTER_HANDLER(GameHandler);
     REGISTER_HANDLER(GameApiGet);
     REGISTER_HANDLER(GameApiPost);
+    REGISTER_HANDLER(DiscordHandler);
+    REGISTER_HANDLER(DiscordApiGet, "res/dictionary.txt");
     REGISTER_HANDLER(OgHandler);
     REGISTER_HANDLER(AboutHandler);
     REGISTER_HANDLER(DirHandler, "/static/", "static");

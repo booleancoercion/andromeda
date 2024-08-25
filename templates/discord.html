@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block head %}
+<script src="/static/js/discord.js"></script>
+<style>
+    #names {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        column-gap: 10px;
+    }
+
+    span.word {
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    span.word:nth-child(2n) {
+        color: var(--accent);
+    }
+
+    #names::after {
+        content: "";
+        flex: auto;
+    }
+</style>
+{% endblock %}
+{% block longtitle %}Discord Name Collision Finder{% endblock %}
+{% block content %}
+<noscript>
+    <p style="color: red;">Please enable JavaScript in order to use this page.</p>
+</noscript>
+<article>
+    <h3>Find out which dictionary words can be used to @ping you!</h3>
+    <form action="javascript:void(0);">
+        <p>
+            <label for="name">Your username:</label>
+            <input type="text" id="name" name="name" required minlength="3" maxlength="50">
+        </p>
+        <button id="button" type="submit">Submit</button>
+    </form>
+    <div id="response"></div>
+</article>
+<div id="names"></div>
+{% endblock %}

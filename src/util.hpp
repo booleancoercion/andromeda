@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 inline constexpr struct Ok {
 } Ok;
@@ -52,3 +53,9 @@ Result<std::string, std::monostate> percent_decode(const std::string &input,
 bool is_valid_username(const std::string &username);
 bool is_valid_password(const std::string &password);
 bool is_localhost(mg_addr addr);
+void ltrim(std::string &s);
+void rtrim(std::string &s);
+void trim(std::string &s);
+template <bool capture>
+std::optional<std::vector<std::string>> match(const std::string &input,
+                                              const std::string &pattern);
