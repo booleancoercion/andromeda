@@ -66,18 +66,28 @@ const optional<string> &HttpMessage::get_username() const {
     return m_username;
 }
 
-optional<string> HttpMessage::get_form_var(const string &key) const {
-    mg_str res = mg_http_var(m_msg->body, mg_str_n(key.data(), key.size()));
+template <bool is_form>
+static optional<string> get_var_inner(mg_str content, const string &key) {
+    mg_str res = mg_http_var(content, mg_str_n(key.data(), key.size()));
     if(nullptr == res.buf) {
         return {};
     }
 
     string value(res.buf, res.len);
-    auto decode = percent_decode(value, true);
+    auto decode = percent_decode(value, is_form);
     if(decode.is_err()) {
         return {};
     }
     return decode.get_ok();
+}
+
+optional<string> HttpMessage::get_form_var(const string &key) const {
+    return get_var_inner<true>(m_msg->body, key);
+}
+
+std::optional<std::string> HttpMessage::get_query_var(
+    const std::string &key) const {
+    return get_var_inner<false>(m_msg->query, key);
 }
 
 // Server

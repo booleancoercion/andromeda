@@ -34,6 +34,7 @@ class HttpMessage {
     mg_addr get_peer_addr() const;
     const std::optional<std::string> &get_username() const;
     std::optional<std::string> get_form_var(const std::string &key) const;
+    std::optional<std::string> get_query_var(const std::string &key) const;
 };
 class Server {
   private:
