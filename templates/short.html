@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block head %}
+{% if allowed %}
+<script src="/static/js/short.js"></script>
+{% endif %}
+{% endblock %}
+{% block longtitle %}Link Shortener{% endblock %}
+{% block content %}
+{% if allowed %}
+    <noscript>
+        <p style="color: red;">Please enable JavaScript in order to use this page.</p>
+    </noscript>
+    <article>
+        <h3>Create a new short link.</h3>
+        <form action="javascript:void(0);">
+            <p>
+                <label for="url">Your URL:</label>
+                <input type="url" id="url" name="url" required minlength="1" maxlength="1500" style="width: 100%;">
+            </p>
+            <button id="button" type="submit">Submit</button>
+        </form>
+        <div id="response"></div>
+    </article>
+    <div id="links"></div>
+{% else %}
+    <h3>You are not allowed to perform this action.</h3>
+{% endif %}
+{% endblock %}

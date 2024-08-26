@@ -43,6 +43,7 @@ add_executable(andromeda
     src/handlers/register.cpp
     src/handlers/discord.cpp
     src/handlers/og.cpp
+    src/handlers/short.cpp
 )
 target_compile_options(andromeda PRIVATE
     -Wall

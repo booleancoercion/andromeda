@@ -7,6 +7,7 @@
 #include "handlers/login.hpp"
 #include "handlers/og.hpp"
 #include "handlers/register.hpp"
+#include "handlers/short.hpp"
 #include "server.hpp"
 #include "util.hpp"
 
@@ -68,6 +69,9 @@ int main(void) {
     REGISTER_HANDLER(DiscordHandler);
     REGISTER_HANDLER(DiscordApiGet, "res/dictionary.txt");
     REGISTER_HANDLER(OgHandler);
+    REGISTER_HANDLER(ShortHandler);
+    REGISTER_HANDLER(ShortApiGet);
+    REGISTER_HANDLER(ShortApiPost);
     REGISTER_HANDLER(AboutHandler);
     REGISTER_HANDLER(DirHandler, "/static/", "static");
     REGISTER_HANDLER(FileHandler, "/favicon.ico", "res/andromeda.ico");
