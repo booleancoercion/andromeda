@@ -41,6 +41,8 @@ void Database::init_database() const {
     // clang-format off
     const string stmts{
 R"(
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS visitors(
     id          INTEGER     NOT NULL PRIMARY KEY,
     visitors    INTEGER     NOT NULL
@@ -66,7 +68,7 @@ CREATE TABLE IF NOT EXISTS users(
 CREATE TABLE IF NOT EXISTS tokens(
     id          INTEGER NOT NULL PRIMARY KEY,
     token       BLOB    NOT NULL UNIQUE,
-    username    TEXT    NOT NULL,
+    username    TEXT    NOT NULL REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE,
     expires     INTEGER NOT NULL
 );
 
