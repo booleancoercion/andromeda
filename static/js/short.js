@@ -69,7 +69,7 @@ function submitLink() {
                 text.style.color = "red";
             } else {
                 const href = document.createElement("a");
-                href.href = `https://boolco.dev/s/${data.mnemonic}`;
+                href.href = `/s/${data.mnemonic}`;
                 href.textContent = href.href;
                 text.append("Your link has been created! Visit ", href, " to access it.");
                 text.style.color = "green";

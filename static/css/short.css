@@ -13,7 +13,7 @@
 .linkelem {
     border: 1px solid var(--border);
     padding: 10px 20px;
-    display: flex;
+    display: grid;
     align-items: center;
 }
 
@@ -27,6 +27,7 @@
 
 .linkelem:nth-child(3n) {
     justify-content: center;
+    display: flex;
 }
 
 
