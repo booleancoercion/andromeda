@@ -56,6 +56,8 @@ class Database {
                                                const std::string &mnemonic,
                                                const std::string &link);
     DbResult<std::string> get_short_link(const std::string &mnemonic);
+    /// Returns a list of links belonging to the specified user.
+    /// The list is a collection of (mnemonic, link) pairs.
     DbResult<std::vector<std::pair<std::string, std::string>>> get_user_links(
         const std::string &username);
     DbResult<std::monostate> delete_short_link(const std::string &username,

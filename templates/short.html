@@ -2,6 +2,7 @@
 {% block head %}
 {% if allowed %}
 <script src="/static/js/short.js"></script>
+<link rel="stylesheet" href="/static/css/short.css" />
 {% endif %}
 {% endblock %}
 {% block longtitle %}Link Shortener{% endblock %}
@@ -21,8 +22,8 @@
         </form>
         <div id="response"></div>
     </article>
-    <div id="links"></div>
+    <div id="links" class="linktable"></div>
 {% else %}
-    <h3>You are not allowed to perform this action.</h3>
+    <h3>Please log in to use this page.</h3>
 {% endif %}
 {% endblock %}
