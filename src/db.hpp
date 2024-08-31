@@ -51,4 +51,13 @@ class Database {
     DbResult<std::monostate> store_token(const std::string &username,
                                          token_t token) const;
     DbResult<std::string> get_user_of_token(token_t token) const;
+
+    DbResult<std::monostate> insert_short_link(const std::string &username,
+                                               const std::string &mnemonic,
+                                               const std::string &link);
+    DbResult<std::string> get_short_link(const std::string &mnemonic);
+    DbResult<std::vector<std::pair<std::string, std::string>>> get_user_links(
+        const std::string &username);
+    DbResult<std::monostate> delete_short_link(const std::string &username,
+                                               const std::string &mnemonic);
 };

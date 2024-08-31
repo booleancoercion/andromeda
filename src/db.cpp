@@ -12,8 +12,9 @@
     if((val1) != (val2)) {                                                     \
         goto label;                                                            \
     }
+#define ASSERT_STMT_OK ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err)
 
-using std::vector, std::string, std::monostate, std::span;
+using std::vector, std::string, std::monostate, std::span, std::pair;
 
 static int64_t now_millis() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -147,6 +148,12 @@ CREATE TABLE IF NOT EXISTS tokens(
     username    TEXT    NOT NULL REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE,
     expires     INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS shorts(
+    id          INTEGER NOT NULL PRIMARY KEY,
+    username    TEXT    NOT NULL REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    mnemonic    TEXT    NOT NULL UNIQUE,
+    link        TEXT    NOT NULL
+);
 
 INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
 )"};
@@ -164,7 +171,7 @@ DbResult<int64_t> Database::get_and_increase_visitors() const {
     Stmt stmt = Stmt::prepare(
         m_connection,
         "UPDATE visitors SET visitors = visitors + 1 RETURNING visitors;");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_ROW, err);
@@ -180,13 +187,13 @@ DbResult<monostate> Database::insert_sha256_hmac_key(mac_key_t key) const {
         m_connection,
         "INSERT INTO sha256_hmac_key(id, key) VALUES (0, ?) ON CONFLICT(id) DO "
         "UPDATE SET key = excluded.key WHERE id = excluded.id;");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.bind_blob(1, key);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     return {{}, Ok};
 
 err:
@@ -197,7 +204,7 @@ err:
 DbResult<mac_key_t> Database::get_sha256_hmac_key() const {
     Stmt stmt = Stmt::prepare(m_connection,
                               "SELECT key FROM sha256_hmac_key WHERE id = 0;");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     if(stmt.ret() == SQLITE_ROW) {
@@ -220,20 +227,16 @@ DbResult<vector<Message>> Database::get_messages() const {
     Stmt stmt = Stmt::prepare(
         m_connection,
         "SELECT name, content, timestamp FROM messages ORDER BY id DESC;");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     while(true) {
         stmt.step();
         if(stmt.ret() == SQLITE_ROW) {
-            string name = stmt.column_text(0);
-            string content = stmt.column_text(1);
-            int64_t timestamp = stmt.column_int64(2);
             // we don't fetch the actual ip since it's not useful outside of the
             // database
-
-            output.push_back(Message{.name = name,
-                                     .content = content,
-                                     .timestamp = timestamp,
+            output.push_back(Message{.name = stmt.column_text(0),
+                                     .content = stmt.column_text(1),
+                                     .timestamp = stmt.column_int64(2),
                                      .ip = string{}});
         } else if(stmt.ret() == SQLITE_DONE) {
             return {output, Ok};
@@ -251,16 +254,16 @@ DbResult<monostate> Database::insert_message(const Message &message) const {
     Stmt stmt = Stmt::prepare(m_connection,
                               "INSERT INTO messages(name, content, timestamp, "
                               "ip) VALUES (?, ?, ?, ?);");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.bind_text(1, message.name);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_text(2, message.content);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_int64(3, now_millis());
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_text(4, message.ip);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     if(stmt.ret() == SQLITE_CONSTRAINT_UNIQUE) {
@@ -270,7 +273,7 @@ DbResult<monostate> Database::insert_message(const Message &message) const {
 
     stmt.reset_and_prepare(m_connection, "DELETE FROM messages WHERE id <= "
                                          "(SELECT MAX(id) FROM messages) - 8;");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
@@ -287,14 +290,14 @@ DbResult<monostate> Database::register_user(const string &username,
     Stmt stmt = Stmt::prepare(m_connection,
                               "INSERT INTO users(username, password_hash, "
                               "password_salt) VALUES (?, ?, ?);");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.bind_text(1, username);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_blob(2, password_hash);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_blob(3, salt);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     if(stmt.ret() == SQLITE_CONSTRAINT_UNIQUE) {
@@ -308,15 +311,15 @@ err:
     return {DbError::Unknown, Err};
 }
 
-DbResult<std::pair<pw_hash_t, pw_salt_t>> Database::get_password_hash(
+DbResult<pair<pw_hash_t, pw_salt_t>> Database::get_password_hash(
     const string &username) const {
     Stmt stmt = Stmt::prepare(
         m_connection,
         "SELECT password_hash, password_salt FROM users WHERE username = ?;");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.bind_text(1, username);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     if(stmt.ret() == SQLITE_ROW) {
@@ -343,14 +346,14 @@ DbResult<monostate> Database::store_token(const string &username,
     Stmt stmt = Stmt::prepare(
         m_connection,
         "INSERT INTO tokens(token, username, expires) VALUES(?, ?, ?);");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.bind_blob(1, token);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_text(2, username);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_int64(3, now_millis() + TOKEN_LIFE_MILLIS);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
@@ -365,12 +368,12 @@ DbResult<string> Database::get_user_of_token(token_t token) const {
     Stmt stmt =
         Stmt::prepare(m_connection, "SELECT username FROM "
                                     "tokens WHERE expires > ? AND token = ?;");
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.bind_int64(1, now_millis());
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
     stmt.bind_blob(2, token);
-    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    ASSERT_STMT_OK;
 
     stmt.step();
     if(stmt.ret() == SQLITE_ROW) {
@@ -378,6 +381,101 @@ DbResult<string> Database::get_user_of_token(token_t token) const {
     } else if(stmt.ret() == SQLITE_DONE) {
         return {DbError::Nonexistent, Err};
     }
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<monostate> Database::insert_short_link(const string &username,
+                                                const string &mnemonic,
+                                                const string &link) {
+    Stmt stmt = Stmt::prepare(
+        m_connection,
+        "INSERT INTO shorts(username, mnemonic, link) VALUES(?, ?, ?);");
+    ASSERT_STMT_OK;
+
+    stmt.bind_text(1, username);
+    ASSERT_STMT_OK;
+    stmt.bind_text(2, mnemonic);
+    ASSERT_STMT_OK;
+    stmt.bind_text(3, link);
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    if(stmt.ret() == SQLITE_CONSTRAINT_UNIQUE) {
+        return {DbError::Unique, Err};
+    } else if(stmt.ret() == SQLITE_DONE) {
+        return {{}, Ok};
+    }
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<string> Database::get_short_link(const string &mnemonic) {
+    Stmt stmt = Stmt::prepare(m_connection,
+                              "SELECT link FROM shorts WHERE mnemonic = ?;");
+    ASSERT_STMT_OK;
+
+    stmt.bind_text(1, mnemonic);
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    if(stmt.ret() == SQLITE_DONE) {
+        return {DbError::Nonexistent, Err};
+    } else if(stmt.ret() == SQLITE_ROW) {
+        return {stmt.column_text(0), Ok};
+    }
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<vector<pair<string, string>>> Database::get_user_links(
+    const string &username) {
+    vector<pair<string, string>> result{};
+    Stmt stmt =
+        Stmt::prepare(m_connection, "SELECT mnemonic, link FROM shorts WHERE "
+                                    "username = ? ORDER BY mnemonic ASC;");
+    ASSERT_STMT_OK;
+
+    stmt.bind_text(1, username);
+    ASSERT_STMT_OK;
+
+    while(true) {
+        stmt.step();
+        if(stmt.ret() == SQLITE_ROW) {
+            result.push_back({stmt.column_text(0), stmt.column_text(1)});
+        } else if(stmt.ret() == SQLITE_DONE) {
+            return {result, Ok};
+        } else {
+            break;
+        }
+    }
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<monostate> Database::delete_short_link(const string &username,
+                                                const string &mnemonic) {
+    Stmt stmt = Stmt::prepare(
+        m_connection,
+        "DELETE FROM shorts WHERE username = ? AND mnemonic = ?;");
+    ASSERT_STMT_OK;
+
+    stmt.bind_text(1, username);
+    ASSERT_STMT_OK;
+    stmt.bind_text(2, mnemonic);
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
+    return {{}, Ok};
 
 err:
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
