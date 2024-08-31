@@ -1,3 +1,24 @@
+function deleteLink() {
+    const mnemonic = this.dataset.mnemonic;
+
+    fetch("/api/short", {
+        "method": "DELETE",
+        "body": JSON.stringify({
+            "mnemonic": mnemonic
+        })
+    })
+        .then((data) => data.json())
+        .then((data) => {
+            if ("error" in data) {
+                console.error("Server error when deleting link: " + data.error);
+            }
+            updateLinks();
+        })
+        .catch((error) => {
+            console.error("JS error when deleting link: " + error);
+        })
+}
+
 function updateLinks() {
     const links = document.querySelector("#links");
 
@@ -33,11 +54,16 @@ function updateLinks() {
                     button.className = "linkbutton";
                     button.dataset.mnemonic = entry.mnemonic;
                     button.textContent = "Delete";
+                    button.addEventListener("click", deleteLink);
                     button_div.appendChild(button);
                     elements.push(button_div);
                 }
 
-                links.replaceChildren(...elements);
+                if (elements.length === 0) {
+                    links.replaceChildren("No links here...");
+                } else {
+                    links.replaceChildren(...elements);
+                }
             }
         })
         .catch((error) => {

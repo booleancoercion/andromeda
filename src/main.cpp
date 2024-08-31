@@ -70,8 +70,10 @@ int main(void) {
     REGISTER_HANDLER(DiscordApiGet, "res/dictionary.txt");
     REGISTER_HANDLER(OgHandler);
     REGISTER_HANDLER(ShortHandler);
+    REGISTER_HANDLER(ShortNavigateHandler);
     REGISTER_HANDLER(ShortApiGet);
     REGISTER_HANDLER(ShortApiPost);
+    REGISTER_HANDLER(ShortApiDelete);
     REGISTER_HANDLER(AboutHandler);
     REGISTER_HANDLER(DirHandler, "/static/", "static");
     REGISTER_HANDLER(FileHandler, "/favicon.ico", "res/andromeda.ico");

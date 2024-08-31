@@ -35,6 +35,34 @@ HttpResponse ShortHandler::respond(Server &, const HttpMessage &msg) {
     return response;
 }
 
+// ShortNavigateHandler
+
+bool ShortNavigateHandler::matches(const HttpMessage &msg) const {
+    return msg.get_method() == "GET" &&
+           match<false>(msg.get_uri(), "/s/*").has_value();
+}
+
+HttpResponse ShortNavigateHandler::respond(Server &server,
+                                           const HttpMessage &msg) {
+    auto matches = match<true>(msg.get_uri(), "/s/*");
+    string mnemonic = matches.value()[0];
+
+    auto link = server.get_db().get_short_link(mnemonic);
+    HttpResponse response{};
+    response.set_content_type(ContentType::TextPlain);
+    if(link.is_err() && link.get_err() == DbError::Nonexistent) {
+        response.status_code = 404;
+        response.body = "not found";
+    } else if(link.is_err()) {
+        response.status_code = 500;
+        response.body = "DB error";
+    } else {
+        response.status_code = 302;
+        response.headers["Location"] = link.get_ok();
+    }
+    return response;
+}
+
 // ShortApiGet
 
 bool ShortApiGet::matches(const HttpMessage &msg) const {
@@ -133,14 +161,52 @@ HttpResponse ShortApiPost::respond(Server &server, const HttpMessage &msg) {
         // incredibly unlikely
         response.status_code = 500;
         response.body = R"({"error": "please try again"})";
-        return response;
     } else if(res.is_err()) {
         response.status_code = 500;
         response.body = R"({"error": "DB error"})";
-        return response;
     } else {
         response.status_code = 200;
         response.body = json{{"mnemonic", mnemonic}}.dump();
+    }
+    return response;
+}
+
+// ShortApiDelete
+
+bool ShortApiDelete::matches(const HttpMessage &msg) const {
+    return msg.get_method() == "DELETE" && msg.get_uri() == "/api/short";
+}
+HttpResponse ShortApiDelete::respond(Server &server, const HttpMessage &msg) {
+    HttpResponse response{};
+    response.set_content_type(ContentType::ApplicationJson);
+    if(!msg.get_username().has_value()) {
+        response.status_code = 403;
+        response.body = R"({"error": "you are not logged in"})";
         return response;
     }
+
+    json data{json::parse(msg.get_body(), nullptr, false)};
+    if(data.is_discarded() ||
+       !(data.contains("mnemonic") && data["mnemonic"].is_string()))
+    {
+        response.status_code = 400;
+        response.body = R"({"error": "invalid json"})";
+        return response;
+    }
+
+    string mnemonic = data["mnemonic"];
+
+    auto res =
+        server.get_db().delete_short_link(msg.get_username().value(), mnemonic);
+    if(res.is_err() && res.get_err() == DbError::Nonexistent) {
+        response.status_code = 400;
+        response.body = R"({"error": "invalid mnemonic or username"})";
+    } else if(res.is_err()) {
+        response.status_code = 500;
+        response.body = R"({"error": "DB error"})";
+    } else {
+        response.status_code = 200;
+        response.body = R"({"success": "success"})";
+    }
+    return response;
 }

@@ -15,6 +15,13 @@ class ShortHandler : public SimpleHandler {
     HttpResponse respond(Server &server, const HttpMessage &msg) override;
 };
 
+class ShortNavigateHandler : public SimpleHandler {
+  public:
+    ShortNavigateHandler() = default;
+    bool matches(const HttpMessage &msg) const override;
+    HttpResponse respond(Server &server, const HttpMessage &msg) override;
+};
+
 class ShortApiGet : public SimpleHandler {
   public:
     ShortApiGet() = default;
@@ -25,6 +32,13 @@ class ShortApiGet : public SimpleHandler {
 class ShortApiPost : public SimpleHandler {
   public:
     ShortApiPost() = default;
+    bool matches(const HttpMessage &msg) const override;
+    HttpResponse respond(Server &server, const HttpMessage &msg) override;
+};
+
+class ShortApiDelete : public SimpleHandler {
+  public:
+    ShortApiDelete() = default;
     bool matches(const HttpMessage &msg) const override;
     HttpResponse respond(Server &server, const HttpMessage &msg) override;
 };
