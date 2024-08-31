@@ -47,24 +47,31 @@ function showMessages() {
     fetch("/api/game")
         .then((data) => data.json())
         .then((data) => {
-            const dl = document.createElement("dl");
-            for (const [index, message] of data.messages.entries()) {
-                const dt = document.createElement("dt");
-                const code = document.createElement("code");
-                code.textContent = message.name;
-                dt.appendChild(code);
-                dt.appendChild(document.createTextNode(` says: (${timeSince(message.timestamp)} ago)`));
-                dt.style.opacity = 1 - index / 10;
+            if ("error" in data) {
+                const text = document.createElement("span");
+                text.textContent = data.error;
+                text.style.color = "red";
+                messages.replaceChildren(text);
+            } else {
+                const dl = document.createElement("dl");
+                for (const [index, message] of data.messages.entries()) {
+                    const dt = document.createElement("dt");
+                    const code = document.createElement("code");
+                    code.textContent = message.name;
+                    dt.appendChild(code);
+                    dt.appendChild(document.createTextNode(` says: (${timeSince(message.timestamp)} ago)`));
+                    dt.style.opacity = 1 - index / 10;
 
-                const dd = document.createElement("dd");
-                dd.textContent = message.content;
-                dd.style.opacity = 1 - index / 10;
+                    const dd = document.createElement("dd");
+                    dd.textContent = message.content;
+                    dd.style.opacity = 1 - index / 10;
 
-                dl.appendChild(dt);
-                dl.appendChild(dd);
+                    dl.appendChild(dt);
+                    dl.appendChild(dd);
+                }
+
+                messages.replaceChildren(dl);
             }
-
-            messages.replaceChildren(dl);
             messages.style.height = messages.scrollHeight + "px";
 
         })
