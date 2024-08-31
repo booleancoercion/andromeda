@@ -15,7 +15,7 @@
         <form action="javascript:void(0);">
             <p>
                 <label for="url">Your URL:</label>
-                <input type="url" id="url" name="url" required minlength="1" maxlength="1500" style="width: 100%;">
+                <input type="url" id="url" name="url" required minlength="1" maxlength="1500" style="width: 100%;" pattern="^(http://|https://).*$" autocomplete="off">
             </p>
             <button id="button" type="submit">Submit</button>
         </form>
