@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS tokens(
     expires     INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS shorts(
-    id          INTEGER NOT NULL PRIMARY KEY,
+    id          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     username    TEXT    NOT NULL REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE,
     mnemonic    TEXT    NOT NULL UNIQUE,
     link        TEXT    NOT NULL
@@ -439,7 +439,7 @@ DbResult<vector<pair<string, string>>> Database::get_user_links(
     vector<pair<string, string>> result{};
     Stmt stmt =
         Stmt::prepare(m_connection, "SELECT mnemonic, link FROM shorts WHERE "
-                                    "username = ? ORDER BY mnemonic ASC;");
+                                    "username = ? ORDER BY id DESC;");
     ASSERT_STMT_OK;
 
     stmt.bind_text(1, username);
