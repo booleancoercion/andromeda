@@ -5,15 +5,91 @@
 #include <sqlite/sqlite3.h>
 
 #include <chrono>
+#include <span>
 #include <variant>
 
-using std::vector, std::string, std::monostate;
+#define ASSERT_EQ_OR_GOTO(val1, val2, label)                                   \
+    if((val1) != (val2)) {                                                     \
+        goto label;                                                            \
+    }
+
+using std::vector, std::string, std::monostate, std::span;
 
 static int64_t now_millis() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::system_clock::now().time_since_epoch())
         .count();
 }
+
+// Stmt
+
+class Stmt {
+  private:
+    sqlite3_stmt *m_inner;
+    int m_ret;
+
+    explicit Stmt(sqlite3_stmt *inner, int ret) : m_inner{inner}, m_ret{ret} {
+    }
+
+    Stmt(const Stmt &) = delete;
+    Stmt(Stmt &&) = delete;
+
+  public:
+    static Stmt prepare(sqlite3 *conn, const string &str) {
+        sqlite3_stmt *stmt;
+        int ret =
+            sqlite3_prepare_v2(conn, str.c_str(), str.size(), &stmt, nullptr);
+
+        return Stmt(stmt, ret);
+    }
+    void reset_and_prepare(sqlite3 *conn, const string &str) {
+        sqlite3_reset(m_inner);
+        m_ret = sqlite3_prepare_v2(conn, str.c_str(), str.size(), &m_inner,
+                                   nullptr);
+    }
+
+    int ret() const {
+        return m_ret;
+    }
+
+    void bind_blob(int iCol, span<uint8_t const> blob) {
+        m_ret = sqlite3_bind_blob(m_inner, iCol, blob.data(), blob.size(),
+                                  SQLITE_STATIC);
+    }
+    void bind_int64(int iCol, int64_t val) {
+        m_ret = sqlite3_bind_int64(m_inner, iCol, val);
+    }
+    void bind_text(int iCol, const string &str) {
+        sqlite3_bind_text(m_inner, iCol, str.c_str(), str.size(),
+                          SQLITE_STATIC);
+    }
+
+    int64_t column_int64(int iCol) {
+        return sqlite3_column_int64(m_inner, iCol);
+    }
+    size_t column_bytes(int iCol) {
+        return sqlite3_column_bytes(m_inner, iCol);
+    }
+    void column_blob(int iCol, span<uint8_t> blob) {
+        size_t bytes = column_bytes(iCol);
+        size_t to_copy = (bytes < blob.size()) ? bytes : blob.size();
+
+        const void *ptr = sqlite3_column_blob(m_inner, iCol);
+        std::memcpy(blob.data(), ptr, to_copy);
+    }
+    string column_text(int iCol) {
+        return string((const char *)sqlite3_column_text(m_inner, iCol),
+                      column_bytes(iCol));
+    }
+
+    void step() {
+        m_ret = sqlite3_step(m_inner);
+    }
+
+    ~Stmt() {
+        sqlite3_finalize(m_inner);
+    }
+};
 
 // Database
 
@@ -85,120 +161,81 @@ INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
 }
 
 DbResult<int64_t> Database::get_and_increase_visitors() const {
-    sqlite3_stmt *stmt;
-    int rc;
-
-    rc = sqlite3_prepare_v2(
+    Stmt stmt = Stmt::prepare(
         m_connection,
-        "UPDATE visitors SET visitors = visitors + 1 RETURNING visitors;", -1,
-        &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+        "UPDATE visitors SET visitors = visitors + 1 RETURNING visitors;");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    if(SQLITE_ROW == sqlite3_step(stmt)) {
-        int64_t result = sqlite3_column_int64(stmt, 0);
-        sqlite3_finalize(stmt);
-        return {result, Ok};
-    }
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_ROW, err);
+    return {stmt.column_int64(0), Ok};
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
 
 DbResult<monostate> Database::insert_sha256_hmac_key(mac_key_t key) const {
-    sqlite3_stmt *stmt;
-    int rc;
-
-    rc = sqlite3_prepare_v2(
+    Stmt stmt = Stmt::prepare(
         m_connection,
         "INSERT INTO sha256_hmac_key(id, key) VALUES (0, ?) ON CONFLICT(id) DO "
-        "UPDATE SET key = excluded.key WHERE id = excluded.id;",
-        -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+        "UPDATE SET key = excluded.key WHERE id = excluded.id;");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_bind_blob(stmt, 1, key.data(), key.size(), SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+    stmt.bind_blob(1, key);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_step(stmt);
-    if(SQLITE_DONE == rc) {
-        sqlite3_finalize(stmt);
-        return {monostate{}, Ok};
-    }
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    return {{}, Ok};
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
 
 DbResult<mac_key_t> Database::get_sha256_hmac_key() const {
-    sqlite3_stmt *stmt;
-    int rc;
+    Stmt stmt = Stmt::prepare(m_connection,
+                              "SELECT key FROM sha256_hmac_key WHERE id = 0;");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_prepare_v2(m_connection,
-                            "SELECT id, key FROM sha256_hmac_key WHERE id = 0;",
-                            -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_step(stmt);
-    if(SQLITE_ROW == rc) {
+    stmt.step();
+    if(stmt.ret() == SQLITE_ROW) {
         mac_key_t key{};
-        size_t len = sqlite3_column_bytes(stmt, 1);
-        const void *data = sqlite3_column_blob(stmt, 1);
-
-        if(len != key.size()) {
-            goto err;
-        }
-        std::memcpy(key.data(), data, len);
-        sqlite3_finalize(stmt);
+        ASSERT_EQ_OR_GOTO(stmt.column_bytes(0), key.size(), err);
+        stmt.column_blob(0, key);
         return {key, Ok};
-    } else if(SQLITE_DONE == rc) {
-        sqlite3_finalize(stmt);
+    } else if(stmt.ret() == SQLITE_DONE) {
         return {DbError::Nonexistent, Err};
     }
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
 
 DbResult<vector<Message>> Database::get_messages() const {
-    sqlite3_stmt *stmt;
-    int rc;
     vector<Message> output{};
 
-    rc = sqlite3_prepare_v2(
+    Stmt stmt = Stmt::prepare(
         m_connection,
-        "SELECT id, name, content, timestamp FROM messages ORDER BY id DESC;",
-        -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+        "SELECT name, content, timestamp FROM messages ORDER BY id DESC;");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
     while(true) {
-        rc = sqlite3_step(stmt);
-        if(SQLITE_ROW == rc) {
-            string name((const char *)sqlite3_column_text(stmt, 1));
-            string content((const char *)sqlite3_column_text(stmt, 2));
-            int64_t timestamp = sqlite3_column_int64(stmt, 3);
+        stmt.step();
+        if(stmt.ret() == SQLITE_ROW) {
+            string name = stmt.column_text(0);
+            string content = stmt.column_text(1);
+            int64_t timestamp = stmt.column_int64(2);
             // we don't fetch the actual ip since it's not useful outside of the
             // database
+
             output.push_back(Message{.name = name,
                                      .content = content,
                                      .timestamp = timestamp,
-                                     .ip = string()});
-        } else if(SQLITE_DONE == rc) {
-            sqlite3_finalize(stmt);
+                                     .ip = string{}});
+        } else if(stmt.ret() == SQLITE_DONE) {
             return {output, Ok};
         } else {
             break;
@@ -206,67 +243,40 @@ DbResult<vector<Message>> Database::get_messages() const {
     }
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
 
 DbResult<monostate> Database::insert_message(const Message &message) const {
-    sqlite3_stmt *stmt;
-    int rc;
+    Stmt stmt = Stmt::prepare(m_connection,
+                              "INSERT INTO messages(name, content, timestamp, "
+                              "ip) VALUES (?, ?, ?, ?);");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_prepare_v2(m_connection,
-                            "INSERT INTO messages(name, content, timestamp, "
-                            "ip) VALUES (?, ?, ?, ?);",
-                            -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+    stmt.bind_text(1, message.name);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_text(2, message.content);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_int64(3, now_millis());
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_text(4, message.ip);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_bind_text(stmt, 1, message.name.c_str(), -1, SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_bind_text(stmt, 2, message.content.c_str(), -1, SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_bind_int64(stmt, 3, now_millis());
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_bind_text(stmt, 4, message.ip.c_str(), -1, SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_step(stmt);
-    if(SQLITE_CONSTRAINT_UNIQUE == rc) {
-        sqlite3_finalize(stmt);
+    stmt.step();
+    if(stmt.ret() == SQLITE_CONSTRAINT_UNIQUE) {
         return {DbError::Unique, Err};
-    } else if(SQLITE_DONE != rc) {
-        goto err;
     }
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
 
-    sqlite3_reset(stmt);
-    rc = sqlite3_prepare_v2(
-        m_connection,
-        "DELETE FROM messages WHERE id <= (SELECT MAX(id) FROM messages) - 8;",
-        -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+    stmt.reset_and_prepare(m_connection, "DELETE FROM messages WHERE id <= "
+                                         "(SELECT MAX(id) FROM messages) - 8;");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    if(SQLITE_DONE == sqlite3_step(stmt)) {
-        sqlite3_finalize(stmt);
-        return {monostate{}, Ok};
-    }
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
+    return {{}, Ok};
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
@@ -274,169 +284,102 @@ err:
 DbResult<monostate> Database::register_user(const string &username,
                                             pw_hash_t password_hash,
                                             pw_salt_t salt) const {
-    sqlite3_stmt *stmt;
-    int rc;
+    Stmt stmt = Stmt::prepare(m_connection,
+                              "INSERT INTO users(username, password_hash, "
+                              "password_salt) VALUES (?, ?, ?);");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_prepare_v2(m_connection,
-                            "INSERT INTO users(username, password_hash, "
-                            "password_salt) VALUES (?, ?, ?);",
-                            -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+    stmt.bind_text(1, username);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_blob(2, password_hash);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_blob(3, salt);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_bind_blob(stmt, 2, password_hash.data(), password_hash.size(),
-                           SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_bind_blob(stmt, 3, salt.data(), salt.size(), SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_step(stmt);
-    if(SQLITE_CONSTRAINT_UNIQUE == rc) {
-        sqlite3_finalize(stmt);
+    stmt.step();
+    if(stmt.ret() == SQLITE_CONSTRAINT_UNIQUE) {
         return {DbError::Unique, Err};
-    } else if(SQLITE_DONE == rc) {
-        sqlite3_finalize(stmt);
-        return {monostate{}, Ok};
+    } else if(stmt.ret() == SQLITE_DONE) {
+        return {{}, Ok};
     }
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
 
 DbResult<std::pair<pw_hash_t, pw_salt_t>> Database::get_password_hash(
     const string &username) const {
-    sqlite3_stmt *stmt;
-    int rc;
-
-    rc = sqlite3_prepare_v2(
+    Stmt stmt = Stmt::prepare(
         m_connection,
-        "SELECT password_hash, password_salt FROM users WHERE username = ?;",
-        -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+        "SELECT password_hash, password_salt FROM users WHERE username = ?;");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_bind_text(stmt, 1, username.data(), -1, SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+    stmt.bind_text(1, username);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_step(stmt);
-    if(SQLITE_ROW == rc) {
-        size_t hashlen = sqlite3_column_bytes(stmt, 0);
-        size_t saltlen = sqlite3_column_bytes(stmt, 1);
-        const void *hash_p = sqlite3_column_blob(stmt, 0);
-        const void *salt_p = sqlite3_column_blob(stmt, 1);
-
-        if(hashlen != PW_HASH_LENGTH || saltlen != PW_SALT_LENGTH) {
-            goto err;
-        }
-
+    stmt.step();
+    if(stmt.ret() == SQLITE_ROW) {
         pw_hash_t hash{};
-        std::memcpy(hash.data(), hash_p, hash.size());
         pw_salt_t salt{};
-        std::memcpy(salt.data(), salt_p, salt.size());
+        ASSERT_EQ_OR_GOTO(stmt.column_bytes(0), hash.size(), err);
+        ASSERT_EQ_OR_GOTO(stmt.column_bytes(1), salt.size(), err);
 
-        sqlite3_finalize(stmt);
+        stmt.column_blob(0, hash);
+        stmt.column_blob(1, salt);
+
         return {{hash, salt}, Ok};
-    } else if(SQLITE_DONE == rc) {
-        sqlite3_finalize(stmt);
+    } else if(stmt.ret() == SQLITE_DONE) {
         return {DbError::Nonexistent, Err};
     }
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
 
 DbResult<monostate> Database::store_token(const string &username,
                                           token_t token) const {
-    sqlite3_stmt *stmt;
-    int rc;
-
-    rc = sqlite3_prepare_v2(
+    Stmt stmt = Stmt::prepare(
         m_connection,
-        "INSERT INTO tokens(token, username, expires) VALUES(?, ?, ?);", -1,
-        &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+        "INSERT INTO tokens(token, username, expires) VALUES(?, ?, ?);");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_bind_blob(stmt, 1, token.data(), token.size(), SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+    stmt.bind_blob(1, token);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_text(2, username);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_int64(3, now_millis() + TOKEN_LIFE_MILLIS);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_bind_text(stmt, 2, username.c_str(), -1, SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_bind_int64(stmt, 3, now_millis() + TOKEN_LIFE_MILLIS);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_step(stmt);
-    if(SQLITE_DONE == rc) {
-        sqlite3_finalize(stmt);
-        return {monostate{}, Ok};
-    }
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
+    return {{}, Ok};
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
 
 DbResult<string> Database::get_user_of_token(token_t token) const {
-    sqlite3_stmt *stmt;
-    int rc;
+    Stmt stmt =
+        Stmt::prepare(m_connection, "SELECT username FROM "
+                                    "tokens WHERE expires > ? AND token = ?;");
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_prepare_v2(m_connection,
-                            "SELECT token, username, expires FROM tokens WHERE "
-                            "expires > ? AND token = ?;",
-                            -1, &stmt, nullptr);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
+    stmt.bind_int64(1, now_millis());
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
+    stmt.bind_blob(2, token);
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err);
 
-    rc = sqlite3_bind_int64(stmt, 1, now_millis());
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_bind_blob(stmt, 2, token.data(), token.size(), SQLITE_STATIC);
-    if(SQLITE_OK != rc) {
-        goto err;
-    }
-
-    rc = sqlite3_step(stmt);
-    if(SQLITE_ROW == rc) {
-        string username((const char *)sqlite3_column_text(stmt, 1));
-        sqlite3_finalize(stmt);
-        return {username, Ok};
-    } else if(SQLITE_DONE == rc) {
-        sqlite3_finalize(stmt);
+    stmt.step();
+    if(stmt.ret() == SQLITE_ROW) {
+        return {stmt.column_text(0), Ok};
+    } else if(stmt.ret() == SQLITE_DONE) {
         return {DbError::Nonexistent, Err};
     }
 
 err:
-    sqlite3_finalize(stmt);
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
 }
