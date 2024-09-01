@@ -124,3 +124,9 @@ optional<vector<string>> match<false>(const string &input,
         return vector<string>{};
     }
 }
+
+string mg_ip_to_string(mg_addr addr) {
+    char buf[50]{}; // longer than any possible IP
+    mg_snprintf(buf, sizeof(buf), "%M", mg_print_ip, &addr);
+    return string(buf);
+}

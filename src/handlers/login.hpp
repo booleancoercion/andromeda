@@ -20,7 +20,8 @@ class LoginPostHandler : public SimpleHandler {
   private:
     inja::Environment m_env{"templates/"};
     inja::Template m_temp;
-    std::shared_ptr<UsernameRatelimit> m_ratelimit;
+    std::shared_ptr<StringedRatelimit> m_username_ratelimit;
+    std::shared_ptr<StringedRatelimit> m_addr_ratelimit;
 
   public:
     LoginPostHandler(Server &server);

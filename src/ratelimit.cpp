@@ -21,7 +21,7 @@ static void remove_less_than(int64_t val, vector<int64_t> &vals) {
     vals.erase(vals.begin(), vals.begin() + num_removed);
 }
 
-void UsernameRatelimit::perform_cleanup() {
+void StringedRatelimit::perform_cleanup() {
     int64_t cutoff = now<std::chrono::seconds>() - m_interval_seconds;
 
     for(auto it = m_attempts.begin(); it != m_attempts.end();) {
@@ -34,11 +34,11 @@ void UsernameRatelimit::perform_cleanup() {
     }
 }
 
-bool UsernameRatelimit::attempt(const string &username) {
-    if(!m_attempts.contains(username)) {
-        m_attempts[username] = vector<int64_t>{};
+bool StringedRatelimit::attempt(const string &str) {
+    if(!m_attempts.contains(str)) {
+        m_attempts[str] = vector<int64_t>{};
     }
-    auto &vec = m_attempts[username];
+    auto &vec = m_attempts[str];
 
     int64_t current = now<std::chrono::seconds>();
     int64_t cutoff = current - m_interval_seconds;

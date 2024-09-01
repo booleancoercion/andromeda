@@ -63,12 +63,6 @@ bool GameApiPost::matches(const HttpMessage &msg) const {
     return msg.get_method() == "POST" && msg.get_uri() == "/api/game";
 }
 
-static string mg_ip_to_string(mg_addr addr) {
-    char buf[50]{}; // longer than any possible IP
-    mg_snprintf(buf, sizeof(buf), "%M", mg_print_ip, &addr);
-    return string(buf);
-}
-
 HttpResponse GameApiPost::respond(Server &server, const HttpMessage &msg) {
     json data{json::parse(msg.get_body(), nullptr, false)};
     if(data.is_discarded() ||

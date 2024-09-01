@@ -40,8 +40,10 @@ HttpResponse LoginGetHandler::respond(Server &, const HttpMessage &msg) {
 
 LoginPostHandler::LoginPostHandler(Server &server)
     : m_temp{m_env.parse_template("login.html")},
-      m_ratelimit{std::make_shared<UsernameRatelimit>(5, 5 * 60)} {
-    server.register_cleanup(m_ratelimit);
+      m_username_ratelimit{std::make_shared<StringedRatelimit>(10, 30 * 60)},
+      m_addr_ratelimit{std::make_shared<StringedRatelimit>(5, 15 * 60)} {
+    server.register_cleanup(m_username_ratelimit);
+    server.register_cleanup(m_addr_ratelimit);
 }
 
 bool LoginPostHandler::matches(const HttpMessage &msg) const {
@@ -51,18 +53,27 @@ bool LoginPostHandler::matches(const HttpMessage &msg) const {
 HttpResponse LoginPostHandler::respond(Server &server, const HttpMessage &msg,
                                        bool &confidential) {
     confidential = true;
+    HttpResponse response{};
 
     if(msg.get_username().has_value()) {
-        HttpResponse response{.status_code = 302};
+        response.status_code = 302;
         response.headers["Location"] = "/";
+        return response;
+    }
+
+    response.set_content_type(ContentType::TextHtml);
+
+    if(!m_addr_ratelimit->attempt(mg_ip_to_string(msg.get_peer_addr()))) {
+        response.status_code = 429;
+        response.body = m_env.render(
+            m_temp, {{"title", "Login"}, {"error", "Please try again later."}});
         return response;
     }
 
     auto username_r = msg.get_form_var("username");
     auto password_r = msg.get_form_var("password");
 
-    HttpResponse response{.status_code = 400};
-    response.set_content_type(ContentType::TextHtml);
+    response.status_code = 400;
     if(!(username_r.has_value() && password_r.has_value())) {
         response.body = m_env.render(
             m_temp, {{"title", "Login"},
@@ -84,7 +95,7 @@ HttpResponse LoginPostHandler::respond(Server &server, const HttpMessage &msg,
             m_env.render(m_temp, {{"title", "Login"},
                                   {"error", "Invalid username or password."}});
         return response;
-    } else if(!m_ratelimit->attempt(username)) {
+    } else if(!m_username_ratelimit->attempt(username)) {
         response.status_code = 429;
         response.body = m_env.render(
             m_temp, {{"title", "Login"}, {"error", "Please try again later."}});
