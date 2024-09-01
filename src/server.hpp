@@ -2,6 +2,7 @@
 
 #include "auth.hpp"
 #include "db.hpp"
+#include "ratelimit.hpp"
 
 #include <mongoose/mongoose.h>
 
@@ -43,6 +44,7 @@ class Server {
     mg_mgr m_manager;
     std::vector<std::string> m_listen_urls;
     std::vector<std::unique_ptr<class BaseHandler>> m_handlers{};
+    std::vector<std::shared_ptr<ICleanup>> m_cleanups{};
     std::string m_key;
     std::string m_cert;
 
@@ -62,6 +64,7 @@ class Server {
 
     void start();
     void register_handler(std::unique_ptr<BaseHandler> handler);
+    void register_cleanup(std::shared_ptr<ICleanup> cleanup);
 
     inline Database &get_db() {
         return m_db;

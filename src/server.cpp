@@ -11,7 +11,7 @@
 #include <limits>
 #include <string>
 
-using std::string, std::vector, std::unique_ptr, std::optional;
+using std::string, std::vector, std::unique_ptr, std::shared_ptr, std::optional;
 
 static string mg_addr_to_string(mg_addr addr) {
     char buf[50]{}; // longer than any possible IP+port combination
@@ -108,6 +108,11 @@ Server::~Server() {
     PLOG_INFO << "server destroyed";
 }
 
+static void cleanup_callback(void *ptr) {
+    ICleanup *cleanup = (ICleanup *)ptr;
+    cleanup->perform_cleanup();
+}
+
 void Server::start() {
     PLOG_INFO << "starting server.";
 
@@ -126,6 +131,12 @@ void Server::start() {
     if(urls_left == 0) {
         PLOG_FATAL << "none of the urls were listenable; aborting";
         exit(1);
+    }
+
+    for(const auto &cleanup : m_cleanups) {
+        mg_timer_add(&m_manager, cleanup->get_cleanup_interval_seconds() * 1000,
+                     MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, cleanup_callback,
+                     cleanup.get());
     }
 
     while(true) {
@@ -241,4 +252,8 @@ void Server::handle_http(mg_connection *conn, const HttpMessage &msg,
 
 void Server::register_handler(unique_ptr<BaseHandler> handler) {
     m_handlers.push_back(std::move(handler));
+}
+
+void Server::register_cleanup(shared_ptr<ICleanup> cleanup) {
+    m_cleanups.push_back(std::move(cleanup));
 }

@@ -4,6 +4,8 @@
 
 #include <inja/inja.hpp>
 #include <nlohmann/json.hpp>
+
+#include <memory>
 #include <sstream>
 
 using nlohmann::json, std::string, std::stringstream;
@@ -36,8 +38,10 @@ HttpResponse LoginGetHandler::respond(Server &, const HttpMessage &msg) {
 
 // LoginPostHandler
 
-LoginPostHandler::LoginPostHandler()
-    : m_temp{m_env.parse_template("login.html")} {
+LoginPostHandler::LoginPostHandler(Server &server)
+    : m_temp{m_env.parse_template("login.html")},
+      m_ratelimit{std::make_shared<UsernameRatelimit>(5, 5 * 60)} {
+    server.register_cleanup(m_ratelimit);
 }
 
 bool LoginPostHandler::matches(const HttpMessage &msg) const {
@@ -71,6 +75,19 @@ HttpResponse LoginPostHandler::respond(Server &server, const HttpMessage &msg,
         response.body =
             m_env.render(m_temp, {{"title", "Login"},
                                   {"error", "Invalid username or password."}});
+        return response;
+    }
+
+    auto user_exists = server.get_db().user_exists(username);
+    if(user_exists.is_err() || !user_exists.get_ok()) {
+        response.body =
+            m_env.render(m_temp, {{"title", "Login"},
+                                  {"error", "Invalid username or password."}});
+        return response;
+    } else if(!m_ratelimit->attempt(username)) {
+        response.status_code = 429;
+        response.body = m_env.render(
+            m_temp, {{"title", "Login"}, {"error", "Please try again later."}});
         return response;
     }
 

@@ -40,6 +40,7 @@ add_executable(andromeda
     src/util.cpp
     src/config.cpp
     src/auth.cpp
+    src/ratelimit.cpp
     src/handlers/index.cpp
     src/handlers/game.cpp
     src/handlers/about.cpp

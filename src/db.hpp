@@ -43,6 +43,7 @@ class Database {
     DbResult<std::vector<Message>> get_messages() const;
     DbResult<std::monostate> insert_message(const Message &message) const;
 
+    DbResult<bool> user_exists(const std::string &username);
     DbResult<std::monostate> register_user(const std::string &username,
                                            pw_hash_t password_hash,
                                            pw_salt_t salt) const;

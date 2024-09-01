@@ -14,13 +14,8 @@
     }
 #define ASSERT_STMT_OK ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_OK, err)
 
-using std::vector, std::string, std::monostate, std::span, std::pair;
-
-static int64_t now_millis() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-        .count();
-}
+using std::vector, std::string, std::monostate, std::span, std::pair,
+    std::chrono::milliseconds;
 
 // Stmt
 
@@ -260,7 +255,7 @@ DbResult<monostate> Database::insert_message(const Message &message) const {
     ASSERT_STMT_OK;
     stmt.bind_text(2, message.content);
     ASSERT_STMT_OK;
-    stmt.bind_int64(3, now_millis());
+    stmt.bind_int64(3, now<std::chrono::milliseconds>());
     ASSERT_STMT_OK;
     stmt.bind_text(4, message.ip);
     ASSERT_STMT_OK;
@@ -278,6 +273,23 @@ DbResult<monostate> Database::insert_message(const Message &message) const {
     stmt.step();
     ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
     return {{}, Ok};
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<bool> Database::user_exists(const std::string &username) {
+    Stmt stmt = Stmt::prepare(
+        m_connection, "SELECT EXISTS(SELECT 1 FROM users WHERE username = ?);");
+    ASSERT_STMT_OK;
+
+    stmt.bind_text(1, username);
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_ROW, err);
+    return {(bool)stmt.column_int64(0), Ok};
 
 err:
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
@@ -352,7 +364,7 @@ DbResult<monostate> Database::store_token(const string &username,
     ASSERT_STMT_OK;
     stmt.bind_text(2, username);
     ASSERT_STMT_OK;
-    stmt.bind_int64(3, now_millis() + TOKEN_LIFE_MILLIS);
+    stmt.bind_int64(3, now<milliseconds>() + TOKEN_LIFE_MILLIS);
     ASSERT_STMT_OK;
 
     stmt.step();
@@ -370,7 +382,7 @@ DbResult<string> Database::get_user_of_token(token_t token) const {
                                     "tokens WHERE expires > ? AND token = ?;");
     ASSERT_STMT_OK;
 
-    stmt.bind_int64(1, now_millis());
+    stmt.bind_int64(1, now<milliseconds>());
     ASSERT_STMT_OK;
     stmt.bind_blob(2, token);
     ASSERT_STMT_OK;

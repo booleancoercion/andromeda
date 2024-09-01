@@ -2,6 +2,7 @@
 
 #include "mongoose/mongoose.h"
 
+#include <chrono>
 #include <optional>
 #include <string>
 #include <variant>
@@ -60,3 +61,8 @@ void trim(std::string &s);
 template <bool capture>
 std::optional<std::vector<std::string>> match(const std::string &input,
                                               const std::string &pattern);
+template <typename unit> inline int64_t now() {
+    return std::chrono::duration_cast<unit>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}

@@ -58,7 +58,7 @@ int main(void) {
     Database db(config.get_db_connection());
     Server server(db, config.get_listen_urls(), key, cert);
     REGISTER_HANDLER(LoginGetHandler);
-    REGISTER_HANDLER(LoginPostHandler);
+    REGISTER_HANDLER(LoginPostHandler, server);
     REGISTER_HANDLER(LogoutHandler);
     REGISTER_HANDLER(RegisterGetHandler);
     REGISTER_HANDLER(RegisterPostHandler);
