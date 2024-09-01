@@ -2,6 +2,7 @@
 
 #include <mongoose/mongoose.h>
 
+#include <algorithm>
 #include <cstring>
 #include <fstream>
 #include <optional>

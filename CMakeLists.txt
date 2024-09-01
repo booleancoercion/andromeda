@@ -7,6 +7,10 @@ project(andromeda VERSION 1.0
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS false)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_EXTENSIONS true)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_library(mongoose STATIC lib/mongoose/mongoose.c)
 target_compile_definitions(mongoose PRIVATE

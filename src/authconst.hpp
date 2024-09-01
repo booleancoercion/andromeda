@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
 constexpr size_t TOKEN_LENGTH = 32;
 constexpr size_t TAG_LENGTH = 32;

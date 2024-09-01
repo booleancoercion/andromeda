@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 inline constexpr struct Ok {
