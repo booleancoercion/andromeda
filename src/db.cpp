@@ -193,7 +193,7 @@ DbResult<monostate> Database::insert_sha256_hmac_key(mac_key_t key) const {
     ASSERT_STMT_OK;
 
     stmt.step();
-    ASSERT_STMT_OK;
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
     return {{}, Ok};
 
 err:
