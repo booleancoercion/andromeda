@@ -1,25 +1,33 @@
 {% extends "base.html" %}
 {% block head %}
+{% if allowed %}
+<script src="/static/js/register.js"></script>
+{% endif %}
 {% endblock %}
 {% block longtitle %}Register{% endblock %}
 {% block content %}
+    <h3>Create new credentials</h3>
+    <form action="/register" method="post">
+        <p>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required minlength="1" maxlength="40" pattern="[a-zA-Z0-9_]+" autocomplete="off">
+        </p>
+        <p>
+            <label for="token">Token:</label>
+            <input type="password" id="token" name="token" required maxlength="128" autocomplete="off">
+        </p>
+        <p>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password">
+        </p>
+        <button id="button" type="submit">Submit</button>
+    </form>
+    {% if exists("error") %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
     {% if allowed %}
-        <h3>Create new credentials</h3>
-        <form action="/register" method="post">
-            <p>
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required minlength="1" maxlength="40" pattern="[a-zA-Z0-9_]+" autocomplete="off">
-            </p>
-            <p>
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password">
-            </p>
-            <button id="button" type="submit">Submit</button>
-        </form>
-        {% if exists("error") %}
-            <p style="color: red;">{{ error }}</p>
-        {% endif %}
-    {% else %}
-        <h3>You are not allowed to perform this action.</h3>
+        <h3>Hello, Admin.</h3>
+        <button id="generate_token" type="button">Generate a registration token</button>
+        <pre id="generated_token"></pre>
     {% endif %}
 {% endblock %}

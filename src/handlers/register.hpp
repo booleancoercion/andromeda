@@ -26,3 +26,11 @@ class RegisterPostHandler : public SimpleHandler {
     HttpResponse respond(Server &server, const HttpMessage &msg,
                          bool &confidential) override;
 };
+
+class GenerateRegistrationTokenApiHandler : public SimpleHandler {
+  public:
+    GenerateRegistrationTokenApiHandler() = default;
+    bool matches(const HttpMessage &msg) const override;
+    HttpResponse respond(Server &server, const HttpMessage &msg,
+                         bool &confidential) override;
+};

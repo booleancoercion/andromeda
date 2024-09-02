@@ -131,13 +131,17 @@ CREATE TABLE IF NOT EXISTS messages(
     timestamp   INTEGER     NOT NULL,
     ip          TEXT        NOT NULL UNIQUE
 );
+CREATE TABLE IF NOT EXISTS registration_tokens(
+    id      INTEGER NOT NULL PRIMARY KEY,
+    token   BLOB    NOT NULL UNIQUE
+);
 CREATE TABLE IF NOT EXISTS users(
     id              INTEGER NOT NULL PRIMARY KEY,
     username        TEXT    NOT NULL UNIQUE,
     password_hash   BLOB    NOT NULL,
     password_salt   BLOB    NOT NULL
 );
-CREATE TABLE IF NOT EXISTS tokens(
+CREATE TABLE IF NOT EXISTS session_tokens(
     id          INTEGER NOT NULL PRIMARY KEY,
     token       BLOB    NOT NULL UNIQUE,
     username    TEXT    NOT NULL REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -162,6 +166,31 @@ INSERT OR IGNORE INTO visitors (id, visitors) VALUES (0, 0);
     }
 }
 
+DbResult<std::monostate> Database::exec_simple(const string &stmt_str) const {
+    Stmt stmt = Stmt::prepare(m_connection, stmt_str);
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
+    return {{}, Ok};
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<monostate> Database::begin_transaction() const {
+    return exec_simple("BEGIN;");
+}
+
+DbResult<monostate> Database::rollback_transaction() const {
+    return exec_simple("ROLLBACK;");
+}
+
+DbResult<monostate> Database::commit_transaction() const {
+    return exec_simple("COMMIT;");
+}
+
 DbResult<int64_t> Database::get_and_increase_visitors() const {
     Stmt stmt = Stmt::prepare(
         m_connection,
@@ -177,14 +206,17 @@ err:
     return {DbError::Unknown, Err};
 }
 
-DbResult<monostate> Database::insert_sha256_hmac_key(mac_key_t key) const {
+DbResult<monostate> Database::insert_sha256_hmac_key(int id,
+                                                     mac_key_t key) const {
     Stmt stmt = Stmt::prepare(
         m_connection,
-        "INSERT INTO sha256_hmac_key(id, key) VALUES (0, ?) ON CONFLICT(id) DO "
+        "INSERT INTO sha256_hmac_key(id, key) VALUES (?, ?) ON CONFLICT(id) DO "
         "UPDATE SET key = excluded.key WHERE id = excluded.id;");
     ASSERT_STMT_OK;
 
-    stmt.bind_blob(1, key);
+    stmt.bind_int64(1, id);
+    ASSERT_STMT_OK;
+    stmt.bind_blob(2, key);
     ASSERT_STMT_OK;
 
     stmt.step();
@@ -196,9 +228,12 @@ err:
     return {DbError::Unknown, Err};
 }
 
-DbResult<mac_key_t> Database::get_sha256_hmac_key() const {
+DbResult<mac_key_t> Database::get_sha256_hmac_key(int id) const {
     Stmt stmt = Stmt::prepare(m_connection,
-                              "SELECT key FROM sha256_hmac_key WHERE id = 0;");
+                              "SELECT key FROM sha256_hmac_key WHERE id = ?;");
+    ASSERT_STMT_OK;
+
+    stmt.bind_int64(1, id);
     ASSERT_STMT_OK;
 
     stmt.step();
@@ -279,7 +314,7 @@ err:
     return {DbError::Unknown, Err};
 }
 
-DbResult<bool> Database::user_exists(const std::string &username) {
+DbResult<bool> Database::user_exists(const std::string &username) const {
     Stmt stmt = Stmt::prepare(
         m_connection, "SELECT EXISTS(SELECT 1 FROM users WHERE username = ?);");
     ASSERT_STMT_OK;
@@ -290,6 +325,46 @@ DbResult<bool> Database::user_exists(const std::string &username) {
     stmt.step();
     ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_ROW, err);
     return {(bool)stmt.column_int64(0), Ok};
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<std::monostate> Database::store_registration_token(
+    token_t token) const {
+    Stmt stmt = Stmt::prepare(
+        m_connection, "INSERT INTO registration_tokens(token) VALUES (?);");
+    ASSERT_STMT_OK;
+
+    stmt.bind_blob(1, token);
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
+    return {{}, Ok};
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
+DbResult<std::monostate> Database::redeem_registration_token(
+    token_t token) const {
+    Stmt stmt = Stmt::prepare(
+        m_connection,
+        "DELETE FROM registration_tokens WHERE token = ? RETURNING 1;");
+    ASSERT_STMT_OK;
+
+    stmt.bind_blob(1, token);
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    if(stmt.ret() == SQLITE_DONE) {
+        return {DbError::Nonexistent, Err};
+    } else if(stmt.ret() == SQLITE_ROW) {
+        return {{}, Ok};
+    }
 
 err:
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
@@ -353,11 +428,11 @@ err:
     return {DbError::Unknown, Err};
 }
 
-DbResult<monostate> Database::store_token(const string &username,
-                                          token_t token) const {
-    Stmt stmt = Stmt::prepare(
-        m_connection,
-        "INSERT INTO tokens(token, username, expires) VALUES(?, ?, ?);");
+DbResult<monostate> Database::store_session_token(const string &username,
+                                                  token_t token) const {
+    Stmt stmt =
+        Stmt::prepare(m_connection, "INSERT INTO session_tokens(token, "
+                                    "username, expires) VALUES(?, ?, ?);");
     ASSERT_STMT_OK;
 
     stmt.bind_blob(1, token);
@@ -376,10 +451,10 @@ err:
     return {DbError::Unknown, Err};
 }
 
-DbResult<string> Database::get_user_of_token(token_t token) const {
-    Stmt stmt =
-        Stmt::prepare(m_connection, "SELECT username FROM "
-                                    "tokens WHERE expires > ? AND token = ?;");
+DbResult<string> Database::get_user_of_session_token(token_t token) const {
+    Stmt stmt = Stmt::prepare(
+        m_connection, "SELECT username FROM "
+                      "session_tokens WHERE expires > ? AND token = ?;");
     ASSERT_STMT_OK;
 
     stmt.bind_int64(1, now<milliseconds>());
@@ -401,7 +476,7 @@ err:
 
 DbResult<monostate> Database::insert_short_link(const string &username,
                                                 const string &mnemonic,
-                                                const string &link) {
+                                                const string &link) const {
     Stmt stmt = Stmt::prepare(
         m_connection,
         "INSERT INTO shorts(username, mnemonic, link) VALUES(?, ?, ?);");
@@ -426,7 +501,7 @@ err:
     return {DbError::Unknown, Err};
 }
 
-DbResult<string> Database::get_short_link(const string &mnemonic) {
+DbResult<string> Database::get_short_link(const string &mnemonic) const {
     Stmt stmt = Stmt::prepare(m_connection,
                               "SELECT link FROM shorts WHERE mnemonic = ?;");
     ASSERT_STMT_OK;
@@ -447,7 +522,7 @@ err:
 }
 
 DbResult<vector<pair<string, string>>> Database::get_user_links(
-    const string &username) {
+    const string &username) const {
     vector<pair<string, string>> result{};
     Stmt stmt =
         Stmt::prepare(m_connection, "SELECT mnemonic, link FROM shorts WHERE "
@@ -474,7 +549,7 @@ err:
 }
 
 DbResult<monostate> Database::delete_short_link(const string &username,
-                                                const string &mnemonic) {
+                                                const string &mnemonic) const {
     Stmt stmt = Stmt::prepare(
         m_connection,
         "DELETE FROM shorts WHERE username = ? AND mnemonic = ?;");

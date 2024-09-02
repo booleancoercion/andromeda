@@ -8,6 +8,10 @@
 
 using nlohmann::json, std::string, std::stringstream;
 
+static bool is_admin(const HttpMessage &msg) {
+    return is_localhost(msg.get_peer_addr());
+}
+
 // RegisterGetHandler
 
 RegisterGetHandler::RegisterGetHandler()
@@ -20,20 +24,14 @@ bool RegisterGetHandler::matches(const HttpMessage &msg) const {
 
 HttpResponse RegisterGetHandler::respond(Server &, const HttpMessage &msg) {
     HttpResponse response{};
-    if(!is_localhost(msg.get_peer_addr())) {
-        json data{};
-        data["title"] = "Register";
-        data["allowed"] = false;
-        response.body = m_env.render(m_temp, data);
-        response.status_code = 403;
-        response.set_content_type(ContentType::TextHtml);
-        return response;
-    }
 
-    if(!msg.get_username().has_value()) {
+    if(is_admin(msg) || !msg.get_username().has_value()) {
         json data{};
         data["title"] = "Register";
-        data["allowed"] = true;
+        data["allowed"] = is_admin(msg);
+        if(msg.get_username().has_value()) {
+            data["user"] = msg.get_username().value();
+        }
         response.body = m_env.render(m_temp, data);
         response.set_content_type(ContentType::TextHtml);
         return response;
@@ -58,9 +56,6 @@ HttpResponse RegisterPostHandler::respond(Server &server,
                                           const HttpMessage &msg,
                                           bool &confidential) {
     confidential = true;
-    if(!is_localhost(msg.get_peer_addr())) {
-        return HttpResponse{.status_code = 403};
-    }
 
     if(msg.get_username().has_value()) {
         HttpResponse response{.status_code = 302};
@@ -69,13 +64,15 @@ HttpResponse RegisterPostHandler::respond(Server &server,
     }
 
     auto username_r = msg.get_form_var("username");
+    auto token_r = msg.get_form_var("token");
     auto password_r = msg.get_form_var("password");
 
-    json data{{"title", "Register"}, {"allowed", true}};
+    json data{{"title", "Register"}, {"allowed", is_admin(msg)}};
     HttpResponse response{.status_code = 400};
     response.set_content_type(ContentType::TextHtml);
-    if(!(username_r.has_value() && password_r.has_value())) {
-        data["error"] = "Please enter a username and a password.";
+    if(!(username_r.has_value() && password_r.has_value() &&
+         token_r.has_value())) {
+        data["error"] = "Please enter a username, token and password.";
         response.body = m_env.render(m_temp, data);
         return response;
     }
@@ -87,7 +84,15 @@ HttpResponse RegisterPostHandler::respond(Server &server,
         return response;
     }
 
-    auto auth_r = server.get_auth().register_user(username, password);
+    auto token = Token::parse(token_r.value());
+    if(token.is_err()) {
+        data["error"] = "Invalid token.";
+        response.body = m_env.render(m_temp, data);
+        return response;
+    }
+
+    auto auth_r =
+        server.get_auth().register_user(token.get_ok(), username, password);
     if(auth_r.is_err()) {
         data["error"] = auth_r.get_err();
         response.body = m_env.render(m_temp, data);
@@ -96,5 +101,37 @@ HttpResponse RegisterPostHandler::respond(Server &server,
 
     response.status_code = 302;
     response.headers["Location"] = "/login";
+    return response;
+}
+
+// GenerateTokenApiHandler
+
+bool GenerateRegistrationTokenApiHandler::matches(
+    const HttpMessage &msg) const {
+    return msg.get_method() == "POST" &&
+           msg.get_uri() == "/api/generate_registration_token";
+}
+
+HttpResponse GenerateRegistrationTokenApiHandler::respond(
+    Server &server, const HttpMessage &msg, bool &confidential) {
+    confidential = true;
+
+    HttpResponse response{};
+    response.set_content_type(ContentType::ApplicationJson);
+    if(!is_admin(msg)) {
+        response.status_code = 403;
+        response.body =
+            R"({"error": "you are not authorized to perform this action"})";
+        return response;
+    }
+
+    auto token = server.get_auth().generate_registration_token();
+    if(token.is_err()) {
+        response.status_code = 500;
+        response.body = json{{"error", token.get_err()}}.dump();
+    } else {
+        response.status_code = 200;
+        response.body = json{{"token", token.get_ok().to_string()}}.dump();
+    }
     return response;
 }

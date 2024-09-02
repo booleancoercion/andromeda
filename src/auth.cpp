@@ -217,25 +217,61 @@ PBKDF2_SHA512_HMAC::~PBKDF2_SHA512_HMAC() {
 
 // Auth
 
-Auth Auth::with_db(const Database &db) {
-    auto res = db.get_sha256_hmac_key();
+static mac_key_t get_or_generate_mac_key(const Database &db, int id) {
+    auto res = db.get_sha256_hmac_key(id);
     mac_key_t key{};
     if(res.is_ok()) {
         key = res.get_ok();
     } else if(res.is_err() && res.get_err() == DbError::Nonexistent) {
         generate_random(key);
-        if(db.insert_sha256_hmac_key(key).is_err()) {
+        if(db.insert_sha256_hmac_key(id, key).is_err()) {
             log_and_throw("DB error when storing hmac key.");
         }
     } else {
         log_and_throw("DB error when retrieving hmac key.");
     }
 
-    return Auth(db, key);
+    return key;
 }
 
-Result<monostate, string> Auth::register_user(const string &username,
+constexpr int SESSION_KEY_ID = 0;
+constexpr int REGISTER_KEY_ID = 1;
+
+Auth Auth::with_db(const Database &db) {
+    mac_key_t session_key = get_or_generate_mac_key(db, SESSION_KEY_ID);
+    mac_key_t register_key = get_or_generate_mac_key(db, REGISTER_KEY_ID);
+
+    return Auth(db, session_key, register_key);
+}
+
+Result<Token, std::string> Auth::generate_registration_token() {
+    token_t inner{};
+    generate_random(inner);
+    tag_t tag = m_register_hmac.sign(inner);
+
+    if(m_db.store_registration_token(inner).is_err()) {
+        return {"DB error when generating registration token", Err};
+    }
+    return {Token(inner, tag), Ok};
+}
+
+Result<monostate, string> Auth::register_user(const Token &token,
+                                              const string &username,
                                               const string &password) {
+    if(!m_register_hmac.verify(token.m_inner, token.m_tag)) {
+        return {"Invalid registration token.", Err};
+    }
+
+    if(m_db.begin_transaction().is_err()) {
+        return {"DB error when registering user.", Err};
+    }
+
+    auto ret1 = m_db.redeem_registration_token(token.m_inner);
+    if(ret1.is_err() && ret1.get_err() == DbError::Nonexistent) {
+        m_db.rollback_transaction();
+        return {"Invalid registration token.", Err};
+    }
+
     pw_salt_t salt{};
     generate_random(salt);
 
@@ -244,14 +280,16 @@ Result<monostate, string> Auth::register_user(const string &username,
     hasher.provide_password(password);
     pw_hash_t hash = hasher.get_hash();
 
-    auto ret = m_db.register_user(username, hash, salt);
-    if(ret.is_err()) {
-        if(ret.get_err() == DbError::Unique) {
-            return {"Could not register user because it already exists.", Err};
-        } else {
-            return {"DB error when registering user.", Err};
-        }
+    auto ret2 = m_db.register_user(username, hash, salt);
+    if(ret2.is_err() && ret2.get_err() == DbError::Unique) {
+        m_db.rollback_transaction();
+        return {"Could not register user because it already exists.", Err};
+    } else if(ret2.is_err()) {
+        m_db.rollback_transaction();
+        return {"DB error when registering user.", Err};
     }
+
+    m_db.commit_transaction();
     return {monostate{}, Ok};
 }
 Result<Token, string> Auth::login(const string &username,
@@ -276,20 +314,19 @@ Result<Token, string> Auth::login(const string &username,
 
     token_t inner{};
     generate_random(inner);
-    token_t tag{};
-    tag = m_hmac.sign(inner);
+    tag_t tag = m_session_hmac.sign(inner);
 
-    if(m_db.store_token(username, inner).is_err()) {
+    if(m_db.store_session_token(username, inner).is_err()) {
         return {"DB error when storing token.", Err};
     }
     return {Token(inner, tag), Ok};
 }
 Result<string, string> Auth::get_user_of_token(const Token &token) {
-    if(!m_hmac.verify(token.m_inner, token.m_tag)) {
+    if(!m_session_hmac.verify(token.m_inner, token.m_tag)) {
         return {"Invalid token signature.", Err};
     }
 
-    auto user_r = m_db.get_user_of_token(token.m_inner);
+    auto user_r = m_db.get_user_of_session_token(token.m_inner);
     if(user_r.is_err()) {
         if(user_r.get_err() == DbError::Nonexistent) {
             return {"Expired token.", Err};

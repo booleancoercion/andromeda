@@ -65,17 +65,23 @@ class PBKDF2_SHA512_HMAC {
 class Auth {
   private:
     const Database &m_db;
-    SHA256_HMAC m_hmac;
+    SHA256_HMAC m_session_hmac;
+    SHA256_HMAC m_register_hmac;
 
-    inline explicit Auth(const Database &db, mac_key_t hmac)
-        : m_db{db}, m_hmac{hmac} {
+    inline explicit Auth(const Database &db, mac_key_t session_hmac,
+                         mac_key_t register_hmac)
+        : m_db{db}, m_session_hmac{session_hmac}, m_register_hmac{
+                                                      register_hmac} {
     }
 
   public:
     static Auth with_db(const Database &db);
 
+    Result<Token, std::string> generate_registration_token();
+
     Result<std::monostate, std::string> register_user(
-        const std::string &username, const std::string &password);
+        const Token &token, const std::string &username,
+        const std::string &password);
     Result<Token, std::string> login(const std::string &username,
                                      const std::string &password);
     Result<std::string, std::string> get_user_of_token(const Token &token);

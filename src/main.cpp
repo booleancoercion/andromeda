@@ -62,6 +62,7 @@ int main(void) {
     REGISTER_HANDLER(LogoutHandler);
     REGISTER_HANDLER(RegisterGetHandler);
     REGISTER_HANDLER(RegisterPostHandler);
+    REGISTER_HANDLER(GenerateRegistrationTokenApiHandler);
     REGISTER_HANDLER(IndexHandler);
     REGISTER_HANDLER(GameHandler);
     REGISTER_HANDLER(GameApiGet);
