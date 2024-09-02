@@ -1,5 +1,6 @@
 #include "db.hpp"
 #include "authconst.hpp"
+#include "util.hpp"
 
 #include <plog/Log.h>
 #include <sqlite/sqlite3.h>
@@ -451,6 +452,23 @@ err:
     return {DbError::Unknown, Err};
 }
 
+DbResult<std::monostate> Database::cleanup_session_tokens() const {
+    Stmt stmt = Stmt::prepare(m_connection,
+                              "DELETE FROM session_tokens WHERE expires < ?;");
+    ASSERT_STMT_OK;
+
+    stmt.bind_int64(1, now<milliseconds>());
+    ASSERT_STMT_OK;
+
+    stmt.step();
+    ASSERT_EQ_OR_GOTO(stmt.ret(), SQLITE_DONE, err);
+    return {{}, Ok};
+
+err:
+    PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
+    return {DbError::Unknown, Err};
+}
+
 DbResult<string> Database::get_user_of_session_token(token_t token) const {
     int64_t current = now<milliseconds>();
     Stmt stmt = Stmt::prepare(m_connection,
@@ -570,4 +588,14 @@ DbResult<monostate> Database::delete_short_link(const string &username,
 err:
     PLOG_ERROR << "sqlite error: " << sqlite3_errmsg(m_connection);
     return {DbError::Unknown, Err};
+}
+
+// SessionTokenCleanup
+
+int64_t SessionTokenCleanup::get_cleanup_interval_seconds() {
+    return TOKEN_LIFE_SECONDS / 10;
+}
+
+void SessionTokenCleanup::perform_cleanup() {
+    m_db.cleanup_session_tokens();
 }

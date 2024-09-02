@@ -3,6 +3,7 @@
 #include "handler.hpp"
 #include "util.hpp"
 
+#include <memory>
 #include <mongoose/mongoose.h>
 #include <plog/Log.h>
 #include <psa/crypto.h>
@@ -94,13 +95,15 @@ std::optional<std::string> HttpMessage::get_query_var(
 
 Server::Server(Database &db, const vector<string> &listen_urls,
                const string &key, const string &cert)
-    : m_db{db}, m_auth{Auth::with_db(db)}, m_listen_urls{listen_urls},
-      m_key{key}, m_cert{cert} {
+    : m_db{db}, m_auth{Auth::with_db(db)},
+      m_listen_urls{listen_urls}, m_key{key}, m_cert{cert} {
     PLOG_INFO << "initializing server";
 
     mg_log_set(MG_LL_NONE);
 
     mg_mgr_init(&m_manager);
+
+    register_cleanup(std::make_shared<SessionTokenCleanup>(m_db));
 }
 
 Server::~Server() {

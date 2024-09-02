@@ -1,6 +1,7 @@
 #pragma once
 
 #include "authconst.hpp"
+#include "ratelimit.hpp"
 #include "util.hpp"
 
 #include <sqlite/sqlite3.h>
@@ -60,6 +61,7 @@ class Database {
         const std::string &username) const;
     DbResult<std::monostate> store_session_token(const std::string &username,
                                                  token_t token) const;
+    DbResult<std::monostate> cleanup_session_tokens() const;
     DbResult<std::string> get_user_of_session_token(token_t token) const;
 
     DbResult<std::monostate> insert_short_link(const std::string &username,
@@ -72,4 +74,16 @@ class Database {
         const std::string &username) const;
     DbResult<std::monostate> delete_short_link(
         const std::string &username, const std::string &mnemonic) const;
+};
+
+class SessionTokenCleanup : public ICleanup {
+  private:
+    const Database &m_db;
+
+  public:
+    inline explicit SessionTokenCleanup(const Database &db) : m_db{db} {
+    }
+
+    int64_t get_cleanup_interval_seconds() override;
+    void perform_cleanup() override;
 };
