@@ -452,14 +452,17 @@ err:
 }
 
 DbResult<string> Database::get_user_of_session_token(token_t token) const {
-    Stmt stmt = Stmt::prepare(
-        m_connection, "SELECT username FROM "
-                      "session_tokens WHERE expires > ? AND token = ?;");
+    int64_t current = now<milliseconds>();
+    Stmt stmt = Stmt::prepare(m_connection,
+                              "UPDATE session_tokens SET expires = ? WHERE "
+                              "expires > ? AND token = ? RETURNING username;");
     ASSERT_STMT_OK;
 
-    stmt.bind_int64(1, now<milliseconds>());
+    stmt.bind_int64(1, current + TOKEN_LIFE_MILLIS);
     ASSERT_STMT_OK;
-    stmt.bind_blob(2, token);
+    stmt.bind_int64(2, current);
+    ASSERT_STMT_OK;
+    stmt.bind_blob(3, token);
     ASSERT_STMT_OK;
 
     stmt.step();
