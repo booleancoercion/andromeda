@@ -2,7 +2,7 @@
 #include <plog/Log.h>
 #include <psa/crypto.h>
 
-extern "C" void mg_random(void *buf, size_t len) {
+extern "C" bool mg_random(void *buf, size_t len) {
     int ret;
     ret = psa_generate_random((unsigned char *)buf, len);
     if(0 != ret) {
@@ -10,4 +10,6 @@ extern "C" void mg_random(void *buf, size_t len) {
         PLOG_INFO << "Error value: " << ret;
         exit(1);
     }
+
+    return true;
 }

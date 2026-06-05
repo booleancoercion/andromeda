@@ -1,0 +1,18 @@
+[submodule "lib/mbedtls"]
+	path = lib/mbedtls
+	url = https://github.com/Mbed-TLS/mbedtls.git
+[submodule "lib/mongoose"]
+	path = lib/mongoose
+	url = https://github.com/cesanta/mongoose.git
+[submodule "lib/inja"]
+	path = lib/inja
+	url = https://github.com/pantor/inja.git
+[submodule "lib/base64"]
+	path = lib/base64
+	url = https://github.com/aklomp/base64.git
+[submodule "lib/json"]
+	path = lib/json
+	url = https://github.com/nlohmann/json.git
+[submodule "lib/plog"]
+	path = lib/plog
+	url = https://github.com/SergiusTheBest/plog.git

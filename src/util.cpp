@@ -58,8 +58,8 @@ constexpr uint8_t ipv6_localhost[16] = {0, 0, 0, 0, 0, 0, 0, 0,
                                         0, 0, 0, 0, 0, 0, 0, 1};
 
 bool is_localhost(mg_addr addr) {
-    return (std::memcmp(ipv4_localhost, addr.ip, 16) == 0) ||
-           (std::memcmp(ipv6_localhost, addr.ip, 16) == 0);
+    return (std::memcmp(ipv4_localhost, addr.addr.ip, 16) == 0) ||
+           (std::memcmp(ipv6_localhost, addr.addr.ip, 16) == 0);
 }
 
 static bool is_not_space(unsigned char ch) {

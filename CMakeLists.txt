@@ -4,7 +4,6 @@ project(andromeda VERSION 1.0
                   DESCRIPTION "Andromeda Website"
                   LANGUAGES C CXX)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS false)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,8 +27,19 @@ target_link_libraries(mongoose PRIVATE
 add_library(sqlite STATIC lib/sqlite/sqlite3.c)
 target_compile_options(sqlite PRIVATE -Wno-language-extension-token)
 
+add_library(inja INTERFACE)
+target_include_directories(inja INTERFACE
+    lib/inja/single_include
+)
+
+add_compile_definitions(MBEDTLS_PSA_CRYPTO_CONFIG)
 add_subdirectory(lib/mbedtls)
 add_subdirectory(lib/base64)
+add_subdirectory(lib/plog)
+
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+add_subdirectory(lib/json)
 
 add_executable(andromeda
     src/main.cpp
@@ -69,4 +79,7 @@ target_link_libraries(andromeda PRIVATE
     MbedTLS::mbedcrypto
     MbedTLS::mbedx509
     base64
+    inja
+    nlohmann_json::nlohmann_json
+    plog::plog
 )
