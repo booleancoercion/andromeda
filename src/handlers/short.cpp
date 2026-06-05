@@ -129,7 +129,7 @@ HttpResponse ShortApiPost::respond(Server &server, const HttpMessage &msg) {
         return response;
     }
 
-    json data{json::parse(msg.get_body(), nullptr, false)};
+    json data = json::parse(msg.get_body(), nullptr, false);
     if(data.is_discarded() ||
        !(data.contains("link") && data["link"].is_string()))
     {
@@ -185,7 +185,7 @@ HttpResponse ShortApiDelete::respond(Server &server, const HttpMessage &msg) {
         return response;
     }
 
-    json data{json::parse(msg.get_body(), nullptr, false)};
+    json data = json::parse(msg.get_body(), nullptr, false);
     if(data.is_discarded() ||
        !(data.contains("mnemonic") && data["mnemonic"].is_string()))
     {

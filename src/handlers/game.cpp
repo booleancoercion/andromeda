@@ -64,7 +64,7 @@ bool GameApiPost::matches(const HttpMessage &msg) const {
 }
 
 HttpResponse GameApiPost::respond(Server &server, const HttpMessage &msg) {
-    json data{json::parse(msg.get_body(), nullptr, false)};
+    json data = json::parse(msg.get_body(), nullptr, false);
     if(data.is_discarded() ||
        !(data.contains("name") && data["name"].is_string() &&
          data.contains("content") && data["content"].is_string()))
