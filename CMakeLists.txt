@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15...3.30)
+cmake_minimum_required(VERSION 3.19...4.3)
 
 project(andromeda VERSION 1.0
                   DESCRIPTION "Andromeda Website"
@@ -33,6 +33,8 @@ target_include_directories(inja INTERFACE
 )
 
 add_compile_definitions(MBEDTLS_PSA_CRYPTO_CONFIG)
+set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
+set(ENABLE_TESTING  OFF CACHE BOOL "" FORCE)
 add_subdirectory(lib/mbedtls)
 add_subdirectory(lib/base64)
 add_subdirectory(lib/plog)

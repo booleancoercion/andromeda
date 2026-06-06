@@ -2,6 +2,7 @@
 
 #include <mongoose/mongoose.h>
 
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -23,6 +24,7 @@ static const char *content_type_to_string(ContentType ct) {
     case ContentType::ApplicationJson:
         return "application/json";
     }
+    throw std::logic_error("unreachable: unhandled ContentType");
 }
 
 struct HttpResponse {

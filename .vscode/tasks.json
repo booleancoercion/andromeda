@@ -6,10 +6,8 @@
             "type": "shell",
             "command": "cmake",
             "args": [
-                "-B",
-                "build",
-                "-DCMAKE_BUILD_TYPE=Debug",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+                "--preset",
+                "clang-debug"
             ]
         },
         {
@@ -18,11 +16,8 @@
             "command": "cmake",
             "args": [
                 "--build",
-                "build",
-                "--config",
-                "Debug",
-                "-j",
-                "8"
+                "--preset",
+                "clang-debug"
             ],
             "group": {
                 "kind": "build",
@@ -30,10 +25,7 @@
             },
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
+                "fileLocation": "autoDetect",
                 "pattern": {
                     "regexp": "^(.*?):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.*)$",
                     "file": 1,

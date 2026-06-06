@@ -5,7 +5,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug andromeda",
-            "program": "${workspaceFolder}/build/andromeda",
+            "program": "${workspaceFolder}/build/debug/andromeda",
             "args": [],
             "cwd": "${workspaceFolder}",
             "env": {},

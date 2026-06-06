@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 
 using nlohmann::json, std::string, std::vector;
 using Res = Result<Config, ConfigError>;
@@ -24,6 +25,7 @@ std::string config_error_str(ConfigError err) {
     case ConfigError::BadDb:
         return "Could not find the DB connection string, or it wasn't a string";
     }
+    throw std::logic_error("unreachable: unhandled ConfigError");
 }
 
 const vector<string> allowed_keys{"listen_urls", "tls_key", "tls_cert", "db"};
