@@ -1,0 +1,59 @@
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+- azure
+
+resources:
+- repo: self
+
+variables:
+  dockerfilePath: 'Dockerfile'
+  tag: '$(Build.BuildId)'
+
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      submodules: recursive
+    - script: |
+        tree
+      displayName: 'List all files'
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+          latest
+- stage: Deploy
+  displayName: Deploy stage
+  jobs:
+    - job: Deploy
+      displayName: Deploy
+      steps:
+        - checkout: self
+          enabled: false
+        - task: AzureRmWebAppDeployment@5
+          displayName: Deploy to Azure App Service
+          inputs:
+            ConnectionType: 'AzureRM'
+            azureSubscription: $(azureRMServiceConnection)
+            appType: 'webAppContainer'
+            WebAppname: $(webAppName)
+            DockerNamespace: $(containerRegistry)
+            DockerRepository: $(imageRepository)
+            DockerImageTag: $(tag)
