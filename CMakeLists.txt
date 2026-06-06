@@ -15,8 +15,6 @@ add_library(mongoose STATIC lib/mongoose/mongoose.c)
 target_compile_definitions(mongoose PRIVATE
     MG_IO_SIZE=32768 MG_ENABLE_IPV6=1
     MG_ENABLE_DIRLIST=0
-    MG_TLS=MG_TLS_MBED
-    MG_ENABLE_CUSTOM_RANDOM=1
 )
 target_link_libraries(mongoose PRIVATE
     MbedTLS::mbedtls
@@ -48,7 +46,6 @@ add_executable(andromeda
     src/server.cpp
     src/handler.cpp
     src/db.cpp
-    src/crypto.cpp
     src/util.cpp
     src/config.cpp
     src/auth.cpp

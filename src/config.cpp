@@ -18,10 +18,6 @@ std::string config_error_str(ConfigError err) {
     case ConfigError::BadUrls:
         return "Could not find the list of listen urls, or it wasn't a list of "
                "strings";
-    case ConfigError::BadKey:
-        return "Could not find the key filename, or it wasn't a string";
-    case ConfigError::BadCert:
-        return "Could not find the certificate filename, or it wasn't a string";
     case ConfigError::BadDb:
         return "Could not find the DB connection string, or it wasn't a string";
     }
@@ -53,16 +49,6 @@ Res Config::from_file(const std::string &filename) {
         urls.push_back(elem);
     }
 
-    if(!(data.contains("tls_key") && data["tls_key"].is_string())) {
-        return {ConfigError::BadKey, Err};
-    }
-    string key = data["tls_key"];
-
-    if(!(data.contains("tls_cert") && data["tls_cert"].is_string())) {
-        return {ConfigError::BadCert, Err};
-    }
-    string cert = data["tls_cert"];
-
     if(!(data.contains("db") && data["db"].is_string())) {
         return {ConfigError::BadDb, Err};
     }
@@ -76,5 +62,5 @@ Res Config::from_file(const std::string &filename) {
         }
     }
 
-    return {Config(urls, key, cert, db), Ok};
+    return {Config(urls, db), Ok};
 }

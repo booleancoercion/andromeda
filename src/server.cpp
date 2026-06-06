@@ -93,10 +93,8 @@ std::optional<std::string> HttpMessage::get_query_var(
 
 // Server
 
-Server::Server(Database &db, const vector<string> &listen_urls,
-               const string &key, const string &cert)
-    : m_db{db}, m_auth{Auth::with_db(db)},
-      m_listen_urls{listen_urls}, m_key{key}, m_cert{cert} {
+Server::Server(Database &db, const vector<string> &listen_urls)
+    : m_db{db}, m_auth{Auth::with_db(db)}, m_listen_urls{listen_urls} {
     PLOG_INFO << "initializing server";
 
     mg_log_set(MG_LL_NONE);
@@ -232,11 +230,6 @@ void Server::event_listener(mg_connection *conn, int event, void *data) {
                          << mg_addr_to_string(conn->rem);
             conn->is_closing = 1;
         }
-
-        mg_tls_opts opts{};
-        opts.key = mg_str_n(m_key.c_str(), m_key.size());
-        opts.cert = mg_str_n(m_cert.c_str(), m_cert.size());
-        mg_tls_init(conn, &opts);
     }
 }
 

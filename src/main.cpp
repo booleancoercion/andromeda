@@ -41,22 +41,8 @@ int main(void) {
     }
     const Config &config = config_r.get_ok();
 
-    auto key_r = read_file(config.get_tls_key_filename());
-    if(key_r.is_err()) {
-        PLOG_FATAL << "failed to open key file";
-        return 1;
-    }
-    const string &key = key_r.get_ok();
-
-    auto cert_r = read_file(config.get_tls_cert_filename());
-    if(cert_r.is_err()) {
-        PLOG_FATAL << "failed to read certificate file";
-        return 1;
-    }
-    const string &cert = cert_r.get_ok();
-
     Database db(config.get_db_connection());
-    Server server(db, config.get_listen_urls(), key, cert);
+    Server server(db, config.get_listen_urls());
     REGISTER_HANDLER(LoginGetHandler);
     REGISTER_HANDLER(LoginPostHandler, server);
     REGISTER_HANDLER(LogoutHandler);
